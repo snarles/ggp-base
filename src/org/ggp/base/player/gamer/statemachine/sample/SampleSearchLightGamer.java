@@ -67,6 +67,8 @@ public final class SampleSearchLightGamer extends StateMachineGamer
 	@Override
 	public Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
+		// TODO: Improve this code!!!
+
 	    StateMachine theMachine = getStateMachine();
 		long start = System.currentTimeMillis();
 		long finishBy = timeout - 1000;
@@ -167,6 +169,7 @@ public final class SampleSearchLightGamer extends StateMachineGamer
 		notifyObservers(new GamerSelectedMoveEvent(moves, selection, stop - start));
 		return selection;
 	}
+
 	@Override
 	public void stateMachineStop() {
 		// Do nothing.
