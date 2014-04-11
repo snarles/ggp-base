@@ -14,11 +14,6 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 public class GrimgauntPredatorStatelessRandomGamer extends GrimgauntPredatorGamer {
 
 	@Override
-	public String getName() {
-		return super.getName() + " (StatelessRandom)";
-	}
-
-	@Override
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 		// Do nothing

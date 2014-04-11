@@ -22,7 +22,7 @@ public abstract class GrimgauntPredatorGamer extends StateMachineGamer {
 
 	@Override
 	public String getName() {
-		return "Grimgaunt Predator";
+		return this.getClass().getSimpleName();
 	}
 
 	@Override
