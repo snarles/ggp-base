@@ -23,6 +23,8 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
  */
 public abstract class GrimgauntPredatorGamer extends StateMachineGamer {
 
+	private static final int TIMEOUT_SAFETY_MARGIN_MS = 1000;
+
 	/**
 	 * Implement this to build useful game state before game starts.
 	 */
@@ -32,6 +34,9 @@ public abstract class GrimgauntPredatorGamer extends StateMachineGamer {
 		// Does nothing here.  Optional.
 	}
 
+	/**
+	 * Returns class name without package name.  Subclasses have distinct names without needing implement getName.
+	 */
 	@Override
 	public String getName() {
 		return this.getClass().getSimpleName();
@@ -60,5 +65,19 @@ public abstract class GrimgauntPredatorGamer extends StateMachineGamer {
 	@Override
 	public void preview(Game g, long timeout) throws GamePreviewException {
 		// Do nothing
+	}
+
+	/**
+	 * Are we almost out of time?
+	 *
+     * @param timeout long containing time in milliseconds when we must return
+	 * @return boolean
+	 */
+	protected boolean isAlmostTimedOut(final long timeout) {
+		return System.currentTimeMillis() > timeout - TIMEOUT_SAFETY_MARGIN_MS;
+	}
+
+	protected class GamerTimeoutException extends Throwable {
+		private static final long serialVersionUID = 1L;
 	}
 }
