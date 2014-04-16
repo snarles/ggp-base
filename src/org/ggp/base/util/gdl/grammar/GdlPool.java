@@ -333,4 +333,13 @@ public final class GdlPool
         } else
             throw new RuntimeException("Uh oh, gdl hierarchy must have been extended without updating this code.");
 	}
+
+	/** new methods **/
+	public static ConcurrentMap<GdlConstant, ConcurrentMap<List<GdlTerm>, GdlRelation>> getTheWholeRelationPool() {
+		return relationPool;
+	}
+
+	public static int qqquery() {
+		return relationPool.keySet().size();
+	}
 }

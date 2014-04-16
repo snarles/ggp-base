@@ -137,4 +137,9 @@ public final class CachedStateMachine extends StateMachine
 		// TODO(schreib): Should this be cached as well?
 		return backingStateMachine.getInitialState();
 	}
+
+	//new
+	public StateMachine getStateMachine() {
+		return backingStateMachine;
+	}
 }

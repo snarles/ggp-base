@@ -393,4 +393,17 @@ public abstract class StateMachine
     		avgScores[j] /= repetitions;
     	}
     }
+    // new methods
+    public Set<GdlSentence> harvestDepthCharge(MachineState state) throws TransitionDefinitionException, MoveDefinitionException {
+    	Map<GdlSentence,Integer> harvestedRelations = new HashMap<GdlSentence,Integer>();
+    	Integer one = new Integer(1);
+        while(!isTerminal(state)) {
+            state = getNextStateDestructively(state, getRandomJointMove(state));
+            Set<GdlSentence> contents = state.getContents();
+            for (GdlSentence g : contents) {
+                harvestedRelations.put(g,one);
+            }
+        }
+        return harvestedRelations.keySet();
+    }
 }

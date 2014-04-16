@@ -3,6 +3,7 @@ package org.ggp.base.player.gamer.statemachine.sample;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 import org.ggp.base.apps.player.detail.DetailPanel;
 import org.ggp.base.apps.player.detail.SimpleDetailPanel;
@@ -10,6 +11,7 @@ import org.ggp.base.player.gamer.event.GamerSelectedMoveEvent;
 import org.ggp.base.player.gamer.exception.GamePreviewException;
 import org.ggp.base.player.gamer.statemachine.StateMachineGamer;
 import org.ggp.base.util.game.Game;
+import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.StateMachine;
@@ -42,12 +44,24 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
  */
 public final class EFGamer extends StateMachineGamer
 {
+	private Set<GdlSentence> knownRelations;
 	/**
 	 * Does nothing
 	 */
 	@Override
 	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
+		CachedStateMachine theMachine = (CachedStateMachine) getStateMachine();
+		ProverStateMachine theMachine0 = (ProverStateMachine) theMachine.getStateMachine();
+		System.out.println("Hello");
+		//theMachine0.qqquery();
+
+		Set<GdlSentence> harvestedRelations = theMachine.harvestDepthCharge(getCurrentState());
+		knownRelations.addAll(harvestedRelations);
+
+		for (GdlSentence g : knownRelations) {
+			System.out.println(g.toString());
+		}
 		// Do nothing.
 		// TODO: we may want to look into this too!
 
@@ -165,6 +179,10 @@ public final class EFGamer extends StateMachineGamer
 		        reasonableMoveFound = true;
 		    }
 		}
+
+		//diagnostic
+		//System.out.println("The current state");
+		//System.out.println(getCurrentState().toString());
 
 		long stop = System.currentTimeMillis();
 

@@ -64,4 +64,8 @@ public class MachineState {
 
         return false;
     }
+    //added
+    public boolean containsRelation(GdlSentence rel) {
+    	return this.contents.contains(rel);
+    }
 }
