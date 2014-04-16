@@ -1,6 +1,8 @@
 package org.ggp.base.player.gamer.statemachine.sample;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -44,7 +46,8 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
  */
 public final class EFGamer extends StateMachineGamer
 {
-	private Set<GdlSentence> knownRelations;
+	private Set<GdlSentence> knownRelations = new HashSet<GdlSentence>();
+	private HashMap<GdlSentence,Integer> evaluationFunction = new HashMap<GdlSentence,Integer>();
 	/**
 	 * Does nothing
 	 */
@@ -55,12 +58,18 @@ public final class EFGamer extends StateMachineGamer
 		ProverStateMachine theMachine0 = (ProverStateMachine) theMachine.getStateMachine();
 		System.out.println("Hello");
 		//theMachine0.qqquery();
-
-		Set<GdlSentence> harvestedRelations = theMachine.harvestDepthCharge(getCurrentState());
-		knownRelations.addAll(harvestedRelations);
-
+		long finishBy = timeout - 3000;
+		while (System.currentTimeMillis() < finishBy) {
+			Set<GdlSentence> harvestedRelations = theMachine.harvestDepthCharge(getCurrentState());
+			knownRelations.addAll(harvestedRelations);
+		}
 		for (GdlSentence g : knownRelations) {
-			System.out.println(g.toString());
+			int xx = theRandom.nextInt(20)-10;
+			System.out.println();
+			System.out.print(g.toString());
+			System.out.print(" = ");
+			System.out.print(xx);
+			evaluationFunction.put(g,new Integer(xx));
 		}
 		// Do nothing.
 		// TODO: we may want to look into this too!
@@ -181,13 +190,26 @@ public final class EFGamer extends StateMachineGamer
 		}
 
 		//diagnostic
-		//System.out.println("The current state");
-		//System.out.println(getCurrentState().toString());
+		MachineState s = getCurrentState();
+		System.out.println("The current state");
+		System.out.println(s.toString());
+		System.out.println("is worth");
+		System.out.println(evaluateState(s));
 
 		long stop = System.currentTimeMillis();
 
 		notifyObservers(new GamerSelectedMoveEvent(moves, selection, stop - start));
 		return selection;
+	}
+
+	private int evaluateState(MachineState s){
+		int sum = 0;
+		for (GdlSentence g : knownRelations) {
+			if (s.containsRelation(g)) {
+				sum = sum+evaluationFunction.get(g).intValue();
+			}
+		}
+		return sum;
 	}
 
 	@Override
@@ -221,4 +243,6 @@ public final class EFGamer extends StateMachineGamer
 	public void stateMachineAbort() {
 		// Do nothing.
 	}
+
+
 }
