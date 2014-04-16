@@ -23,7 +23,9 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
  */
 public abstract class GrimgauntPredatorGamer extends StateMachineGamer {
 
-	private static final int TIMEOUT_SAFETY_MARGIN_MS = 1000;
+	protected static final int TIMEOUT_SAFETY_MARGIN_MS = 1000;
+	protected static final int MINIMUM_GAME_GOAL = 0;
+	protected static final int MAXIMUM_GAME_GOAL = 100;
 
 	/**
 	 * Implement this to build useful game state before game starts.
