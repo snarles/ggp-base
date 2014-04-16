@@ -59,18 +59,27 @@ public final class EFGamer extends StateMachineGamer
 		System.out.println("Hello");
 		//theMachine0.qqquery();
 		long finishBy = timeout - 3000;
+		int counter = 0;
 		while (System.currentTimeMillis() < finishBy) {
-			Set<GdlSentence> harvestedRelations = theMachine.harvestDepthCharge(getCurrentState());
+			Set<GdlSentence> harvestedRelations = theMachine.harvestDepthCharge(getCurrentState(),timeout-4000);
 			knownRelations.addAll(harvestedRelations);
+			counter++;
 		}
+		System.out.println();
+		System.out.print("Loop count:");
+		System.out.println(counter);
+		System.out.print("Harvested:");
+		System.out.println(knownRelations.size());
+
 		for (GdlSentence g : knownRelations) {
 			int xx = theRandom.nextInt(20)-10;
-			System.out.println();
-			System.out.print(g.toString());
-			System.out.print(" = ");
-			System.out.print(xx);
+			//System.out.println();
+			//System.out.print(g.toString());
+			//System.out.print(" = ");
+			//System.out.print(xx);
 			evaluationFunction.put(g,new Integer(xx));
 		}
+
 		// Do nothing.
 		// TODO: we may want to look into this too!
 

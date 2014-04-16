@@ -394,10 +394,12 @@ public abstract class StateMachine
     	}
     }
     // new methods
-    public Set<GdlSentence> harvestDepthCharge(MachineState state) throws TransitionDefinitionException, MoveDefinitionException {
+    public Set<GdlSentence> harvestDepthCharge(MachineState state,long timeout) throws TransitionDefinitionException, MoveDefinitionException {
     	Map<GdlSentence,Integer> harvestedRelations = new HashMap<GdlSentence,Integer>();
     	Integer one = new Integer(1);
-        while(!isTerminal(state)) {
+    	int counter = 0;
+        while(!isTerminal(state) && counter < 100 && System.currentTimeMillis() < timeout) {
+        	counter++;
             state = getNextStateDestructively(state, getRandomJointMove(state));
             Set<GdlSentence> contents = state.getContents();
             for (GdlSentence g : contents) {
