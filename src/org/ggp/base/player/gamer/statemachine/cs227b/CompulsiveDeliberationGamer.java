@@ -17,6 +17,7 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
  * Based upon SampleSearchLightGamer, but extended to handle non-terminal states.
  */
 public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
+	private static final int MAX_SEARCH_DEPTH = 10;
 	private final Random theRandom = new Random();
 	StateMachine theMachine = null;
 	int players = -1;
@@ -24,16 +25,19 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 	@Override
 	public void stateMachineMetaGame(final long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+		System.out.println("stateMachineMetaGame(): entering");
 		if (theMachine == null) {
 			theMachine = getStateMachine();
 		}
 		players = theMachine.getRoles().size();
+		System.out.println("stateMachineMetaGame(): exiting, players=" + players);
 	}
 
 	@Override
 	public Move stateMachineSelectMove(final long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 
+		System.out.println("stateMachineSelectMove(): entering");
 		final long start = System.currentTimeMillis();			// Start time
 		final List<Move> moves = theMachine.getLegalMoves(getCurrentState(), getRole());
 		Move selection = moves.get(new Random().nextInt(moves.size()));
@@ -90,7 +94,7 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 					continue;
 				}
 			} else {
-				selection = getBestMove(nextState, getRole());
+				selection = getBestMove(nextState, getRole(), moveUnderConsideration, timeout);
 			}
 
 			// Check whether any of the legal joint moves from this state lead to
@@ -123,6 +127,7 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 
 		final long stop = System.currentTimeMillis();		// End time
 		notifyObservers(new GamerSelectedMoveEvent(moves, selection, stop - start));
+		System.out.println("stateMachineSelectMove(): exiting, move=" + selection);
 		return selection;
 	}
 
@@ -138,21 +143,27 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 	 * @throws TransitionDefinitionException
 	 * @throws GoalDefinitionException
 	 */
-	private Move getBestMove(final MachineState state, final Role role)
+	private Move getBestMove(final MachineState state, final Role role, final Move move, final long timeout)
 			throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
-		final List<Move> actions = theMachine.getLegalMoves(state, role);
-		Move action = actions.get(0);
+
+		System.out.println("getBestMove(): entering");
+		final List<List<Move>> actions = theMachine.getLegalJointMoves(state, role, move);
+		Move action = actions.get(0).get(0);
 		int score = 0;
 		for (int i = 0; i < actions.size(); ++i) {
-			final int result = getMaxScore(role, simulate(actions.get(i), state));
-			if (result == 100) {
-				return actions.get(i);
+			// Check to see if there's time to continue.
+			if (isAlmostTimedOut(timeout)) break;
+
+			final int result = getMaxScore(role, simulate(actions.get(i), state), move, MAX_SEARCH_DEPTH, timeout);
+			if (result == MAXIMUM_GAME_GOAL) {
+				return actions.get(i).get(0);
 			}
 			if (result > score) {
 				score = result;
-				action = actions.get(i);
+				action = actions.get(i).get(0);
 			}
 		}
+		System.out.println("getBestMove(): exiting, move=" + move);
 		return action;
 	}
 
@@ -166,19 +177,28 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 	 * @throws MoveDefinitionException
 	 * @throws TransitionDefinitionException
 	 */
-	protected int getMaxScore(final Role role, final MachineState state)
+	protected int getMaxScore(final Role role, final MachineState state, final Move move, final int depth, final long timeout)
 			throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+
+		System.out.println("getMaxScore(): entering");
 		if (theMachine.isTerminal(state)) {
 			return theMachine.getGoal(state, role);
 		}
-		final List<Move> actions = theMachine.getLegalMoves(state, role);
+		if (depth <= 0) {
+			return MINIMUM_GAME_GOAL;		// TODO: Is this correct?
+		}
+		final List<List<Move>> actions = theMachine.getLegalJointMoves(state, role, move);
 		int score = 0;
 		for (int i = 0; i < actions.size(); ++i) {
-			final int result = getMaxScore(role, simulate(actions.get(i), state));
+			// Check to see if there's time to continue.
+			if (isAlmostTimedOut(timeout)) break;
+
+			final int result = getMaxScore(role, simulate(actions.get(i), state), move, depth-1, timeout);
 			if (result > score) {
 				score = result;
 			}
 		}
+		System.out.println("getMaxScore(): exiting, score=" + score);
 		return score;
 	}
 
@@ -190,14 +210,15 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 	 * @return MachineState
 	 * @throws TransitionDefinitionException
 	 */
-	protected MachineState simulate(final Move move, final MachineState state)
+	protected MachineState simulate(final List<Move> moves, final MachineState state)
 			throws TransitionDefinitionException {
-		if (move == null) {
+
+		System.out.println("simulate(): entering");
+		if (moves == null || moves.size() < players) {
 			return state;
 		};
-		final List<Move> moves = new ArrayList<Move>();
-		moves.add(move);
-		//return findnext(roles, move, state, game);
-		return theMachine.getNextState(state, moves);
+		final MachineState nextState = theMachine.getNextState(state, moves);
+		System.out.println("simulate(): exiting, state=" + nextState);
+		return nextState;
 	}
 }
