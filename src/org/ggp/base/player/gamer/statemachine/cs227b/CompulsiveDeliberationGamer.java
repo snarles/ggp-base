@@ -1,6 +1,5 @@
 package org.ggp.base.player.gamer.statemachine.cs227b;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -17,10 +16,10 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
  * Based upon SampleSearchLightGamer, but extended to handle non-terminal states.
  */
 public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
-	private static final int MAX_SEARCH_DEPTH = 10;
+	private static final int MAX_SEARCH_DEPTH = 30;
 	private final Random theRandom = new Random();
 	StateMachine theMachine = null;
-	int players = -1;
+	int numberOfRoles = -1;
 
 	@Override
 	public void stateMachineMetaGame(final long timeout)
@@ -29,196 +28,127 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 		if (theMachine == null) {
 			theMachine = getStateMachine();
 		}
-		players = theMachine.getRoles().size();
-		System.out.println("stateMachineMetaGame(): exiting, players=" + players);
+		numberOfRoles = theMachine.getRoles().size();
+		System.out.println("stateMachineMetaGame(): exiting, players=" + numberOfRoles);
 	}
 
 	@Override
 	public Move stateMachineSelectMove(final long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-
-		System.out.println("stateMachineSelectMove(): entering");
-		final long start = System.currentTimeMillis();			// Start time
-		final List<Move> moves = theMachine.getLegalMoves(getCurrentState(), getRole());
-		Move selection = moves.get(new Random().nextInt(moves.size()));
-
-		// Shuffle the moves into a random order, so that when we find the first
-		// move that doesn't give our opponent a forced win, we aren't always choosing
-		// the first legal move over and over (which is visibly repetitive).
-		final List<Move> movesInRandomOrder = new ArrayList<Move>();
-		while (!moves.isEmpty()) {
-			final Move aMove = moves.get(theRandom.nextInt(moves.size()));
-			movesInRandomOrder.add(aMove);
-			moves.remove(aMove);
-		}
-
-		// Go through all of the legal moves in a random over, and consider each one.
-		// For each move, we want to determine whether taking that move will give our
-		// opponent a one-move win. We're also interested in whether taking that move
-		// will immediately cause us to win or lose.
-		//
-		// Our main goal is to find a move which won't give our opponent a one-move win.
-		// We will also continue considering moves for two seconds, in case we can stumble
-		// upon a move which would cause us to win: if we find such a move, we will just
-		// immediately take it.
-		int highestGoalFound = 0;
-		for (final Move moveUnderConsideration : movesInRandomOrder) {
-
-			// Check to see if there's time to continue.
-			if (isAlmostTimedOut(timeout)) break;
-
-			// Get the next state of the game, if we take the move we're considering.
-			// Since it's our turn, in an alternating-play game the opponent will only
-			// have one legal move, and so calling "getRandomJointMove" with our move
-			// fixed will always return the joint move consisting of our move and the
-			// opponent's no-op. In a simultaneous-action game, however, the opponent
-			// may have many moves, and so we will randomly pick one of our opponent's
-			// possible actions and assume they do that.
-			MachineState nextState = theMachine.getNextState(getCurrentState(), theMachine.getRandomJointMove(getCurrentState(), getRole(), moveUnderConsideration));
-
-			// Does the move under consideration end the game? If it does, do we win
-			// or lose? If we lose, don't bother considering it. If we win, then we
-			// definitely want to take this move. If its goal is better than our current
-			// best goal, go ahead and tentatively select it
-			if (theMachine.isTerminal(nextState)) {
-				if (theMachine.getGoal(nextState, getRole()) == MINIMUM_GAME_GOAL) {
-					continue;
-				} else if (theMachine.getGoal(nextState, getRole()) == MAXIMUM_GAME_GOAL) {
-					selection = moveUnderConsideration;
-					break;
-				} else {
-					if (theMachine.getGoal(nextState, getRole()) > highestGoalFound) {
-						selection = moveUnderConsideration;
-						highestGoalFound = theMachine.getGoal(nextState, getRole());
-					}
-					continue;
-				}
+		final long startTimeMs = System.currentTimeMillis();
+		final Role currentRole = getRole();
+		final MachineState currentState = getCurrentState();
+		System.out.println("stateMachineSelectMove(): entering, role is " + currentRole + ", timeout is " + timeout);
+		final List<Move> allLegalMoves = theMachine.getLegalMoves(currentState, currentRole);
+		Move selection = null;
+		if (allLegalMoves != null && !allLegalMoves.isEmpty()) {
+			if (allLegalMoves.size() == 1) {
+				// No choice possible.  Don't bother calling findBestMove.  Most likely the move is noop.
+				selection = allLegalMoves.get(0);
 			} else {
-				selection = getBestMove(nextState, getRole(), moveUnderConsideration, timeout);
-			}
-
-			// Check whether any of the legal joint moves from this state lead to
-			// a loss for us. Again, this only makes sense in the context of an alternating
-			// play zero-sum game, in which this is the opponent's move and they are trying
-			// to make us lose, and so if they are offered any move that will make us lose
-			// they will take it.
-			boolean forcedLoss = false;
-			for (final List<Move> jointMove : theMachine.getLegalJointMoves(nextState)) {
-				final MachineState nextNextState = theMachine.getNextState(nextState, jointMove);
-				if (theMachine.isTerminal(nextNextState)) {
-					if (theMachine.getGoal(nextNextState, getRole()) == MINIMUM_GAME_GOAL) {
-						forcedLoss = true;
-						break;
-					}
-				}
-				// Check to see if there's time to continue.
-				if (isAlmostTimedOut(timeout)) {
-					forcedLoss = true;
-					break;
-				}
-			}
-
-			// If we've verified that this move isn't going to lead us to a state where
-			// our opponent can defeat us in one move, we should keep track of it.
-			if (!forcedLoss) {
-				selection = moveUnderConsideration;
+				selection = findBestMove(currentState, currentRole, timeout);
 			}
 		}
-
-		final long stop = System.currentTimeMillis();		// End time
-		notifyObservers(new GamerSelectedMoveEvent(moves, selection, stop - start));
+		if (selection == null) {
+			System.err.println("stateMachineSelectMove(): ERROR: no legal moves found");
+		}
+		notifyObservers(new GamerSelectedMoveEvent(allLegalMoves, selection, System.currentTimeMillis() - startTimeMs));
 		System.out.println("stateMachineSelectMove(): exiting, move=" + selection);
 		return selection;
 	}
 
-	// **********************************************************************************************
-
 	/**
-	 * Converted from JavaScript examples in notes.
+	 * Get best move given current game state, role, maximum search depth and timeout.
 	 *
-	 * @param state State
+	 * @param currentState MachineState
 	 * @param role Role
+	 * @param searchDepth int
+	 * @param timeout long
 	 * @return Move
 	 * @throws MoveDefinitionException
 	 * @throws TransitionDefinitionException
 	 * @throws GoalDefinitionException
 	 */
-	private Move getBestMove(final MachineState state, final Role role, final Move move, final long timeout)
+	protected Move findBestMove(final MachineState currentState, final Role role, final long timeout)
 			throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
-
-		System.out.println("getBestMove(): entering");
-		final List<List<Move>> actions = theMachine.getLegalJointMoves(state, role, move);
-		Move action = actions.get(0).get(0);
-		int score = 0;
-		for (int i = 0; i < actions.size(); ++i) {
-			// Check to see if there's time to continue.
-			if (isAlmostTimedOut(timeout)) break;
-
-			final int result = getMaxScore(role, simulate(actions.get(i), state), move, MAX_SEARCH_DEPTH, timeout);
-			if (result == MAXIMUM_GAME_GOAL) {
-				return actions.get(i).get(0);
-			}
-			if (result > score) {
-				score = result;
-				action = actions.get(i).get(0);
+		Move result = null;
+		if (currentState == null || role == null || theMachine == null) {
+			System.err.println("findBestMove(): ERROR: null state, move or role");
+		} else {
+			int bestScoreFound = Integer.MIN_VALUE;
+			final List<Move> legalMovesForRoleInState = theMachine.getLegalMoves(currentState, role);
+			if (legalMovesForRoleInState != null && !legalMovesForRoleInState.isEmpty()) {
+				for (final Move moveUnderConsideration : legalMovesForRoleInState) {
+					if (isAlmostTimedOut(timeout)) {
+						System.err.println("findBestMove(): WARNING: timed out. Searching has ended.");
+						break;
+					}
+					if (moveUnderConsideration == null) {
+						System.err.println("findBestMove(): ERROR: null move gotten");
+					} else {
+						final MachineState nextState = theMachine.getNextState(currentState,
+								theMachine.getRandomJointMove(currentState, role, moveUnderConsideration));
+						final int score = getMoveScore(nextState, role, moveUnderConsideration, MAX_SEARCH_DEPTH, timeout);
+						if (score > bestScoreFound) {
+							bestScoreFound = score;
+							result = moveUnderConsideration;
+						}
+					}
+				}
+			} else {
+				System.err.println("findBestMove(): ERROR: no legal moves found");
 			}
 		}
-		System.out.println("getBestMove(): exiting, move=" + move);
-		return action;
+		System.out.println("findBestMove(): exiting, move=" + result);
+		return result;
 	}
 
 	/**
-	 * Converted from JavaScript examples in notes.
+	 * Recursive method to get score for a move under consideration.
 	 *
+	 * @param searchedGameState MachineState
 	 * @param role Role
-	 * @param state MachineState
+	 * @param searchedMove Move
+	 * @param searchDepth int
+	 * @param timeout long
 	 * @return int
 	 * @throws GoalDefinitionException
 	 * @throws MoveDefinitionException
 	 * @throws TransitionDefinitionException
 	 */
-	protected int getMaxScore(final Role role, final MachineState state, final Move move, final int depth, final long timeout)
-			throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-
-		System.out.println("getMaxScore(): entering");
-		if (theMachine.isTerminal(state)) {
-			return theMachine.getGoal(state, role);
-		}
-		if (depth <= 0) {
-			return MINIMUM_GAME_GOAL;		// TODO: Is this correct?
-		}
-		final List<List<Move>> actions = theMachine.getLegalJointMoves(state, role, move);
-		int score = 0;
-		for (int i = 0; i < actions.size(); ++i) {
-			// Check to see if there's time to continue.
-			if (isAlmostTimedOut(timeout)) break;
-
-			final int result = getMaxScore(role, simulate(actions.get(i), state), move, depth-1, timeout);
-			if (result > score) {
-				score = result;
+	private int getMoveScore(final MachineState searchedGameState, final Role role, final Move searchedMove, int searchDepth, final long timeout)
+			throws GoalDefinitionException, TransitionDefinitionException, MoveDefinitionException {
+		int result = MINIMUM_GAME_GOAL;
+		if (searchedGameState == null || searchedMove == null || role == null || theMachine == null) {
+			System.err.println("getMoveScore(): ERROR: bad game state, move or role");
+			result = Integer.MIN_VALUE;		// Out of range score indicates error
+		} else if (theMachine.isTerminal(searchedGameState)) {
+			// Best possible situation: return goal value at terminal game state
+			result = theMachine.getGoal(searchedGameState, role);
+		} else if (searchDepth <= 0) {
+			// No measure of score possible at non-terminal state.  Approximates Random player if search depth is very shallow.
+			System.out.println("getMoveScore(): WARNING: At depth limit, returning random score");
+			result = theRandom.nextInt(MAXIMUM_GAME_GOAL+1);
+		} else {
+			final List<Move> legalMovesForRoleInState = theMachine.getLegalMoves(searchedGameState, role);
+			if (legalMovesForRoleInState != null && !legalMovesForRoleInState.isEmpty()) {
+				for (final Move nextMove : legalMovesForRoleInState) {
+					if (isAlmostTimedOut(timeout)) {
+						System.err.println("getMoveScore(): WARNING: timed out. Searching has ended.");
+						break;
+					}
+					final MachineState nextState = theMachine.getNextState(searchedGameState,
+							theMachine.getRandomJointMove(searchedGameState, role, nextMove));
+					final int tmpScore = getMoveScore(nextState, role, nextMove, searchDepth-1, timeout);
+					if (tmpScore > result) {
+						result = tmpScore;
+					}
+				}
+			} else {
+				System.err.println("getMoveScore(): ERROR: no legal moves found");
 			}
 		}
-		System.out.println("getMaxScore(): exiting, score=" + score);
-		return score;
-	}
-
-	/**
-	 * Converted from JavaScript examples in notes.
-	 *
-	 * @param move Move
-	 * @param state MachineState
-	 * @return MachineState
-	 * @throws TransitionDefinitionException
-	 */
-	protected MachineState simulate(final List<Move> moves, final MachineState state)
-			throws TransitionDefinitionException {
-
-		System.out.println("simulate(): entering");
-		if (moves == null || moves.size() < players) {
-			return state;
-		};
-		final MachineState nextState = theMachine.getNextState(state, moves);
-		System.out.println("simulate(): exiting, state=" + nextState);
-		return nextState;
+		System.out.println("getMoveScore(): exiting, score is " + result + ", at depth " + searchDepth);
+		return result;
 	}
 }
