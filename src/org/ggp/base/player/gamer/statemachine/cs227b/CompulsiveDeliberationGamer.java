@@ -13,10 +13,11 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 /**
- * Based upon SampleSearchLightGamer, but extended to handle non-terminal states.
+ * Compulsive deliberation player example, which is brute-force search, but with search depth
+ * limit and timeout limit.
  */
 public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
-	private static final int MAX_SEARCH_DEPTH = 30;
+	private static final int MAX_SEARCH_DEPTH = 20;
 	private final Random theRandom = new Random();
 	StateMachine theMachine = null;
 	int numberOfRoles = -1;
@@ -39,7 +40,12 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 		final Role currentRole = getRole();
 		final MachineState currentState = getCurrentState();
 		System.out.println("stateMachineSelectMove(): entering, role is " + currentRole + ", timeout is " + timeout);
-		final List<Move> allLegalMoves = theMachine.getLegalMoves(currentState, currentRole);
+		List<Move> allLegalMoves = null;
+		try {
+			allLegalMoves = theMachine.getLegalMoves(currentState, currentRole);
+		} catch (MoveDefinitionException mde) {
+			System.err.println("stateMachineSelectMove(): MoveDefinitionException: " + mde.getMessage());
+		}
 		Move selection = null;
 		if (allLegalMoves != null && !allLegalMoves.isEmpty()) {
 			if (allLegalMoves.size() == 1) {
@@ -148,7 +154,9 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 				System.err.println("getMoveScore(): ERROR: no legal moves found");
 			}
 		}
-		System.out.println("getMoveScore(): exiting, score is " + result + ", at depth " + searchDepth);
+		if (result > MINIMUM_GAME_GOAL) {
+			System.out.println("getMoveScore(): exiting, score is " + result + ", at depth " + searchDepth);
+		}
 		return result;
 	}
 }
