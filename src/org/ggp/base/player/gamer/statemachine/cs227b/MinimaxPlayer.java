@@ -1,9 +1,8 @@
-ackage org.ggp.base.player.gamer.statemachine.cs227b;
+package org.ggp.base.player.gamer.statemachine.cs227b;
 
 import org.ggp.base.apps.player.detail.DetailPanel;
 import org.ggp.base.apps.player.detail.SimpleDetailPanel;
 import org.ggp.base.player.gamer.exception.GamePreviewException;
-import org.ggp.base.player.gamer.statemachine.StateMachineGamer;
 import org.ggp.base.util.game.Game;
 import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.cache.CachedStateMachine;
