@@ -43,6 +43,7 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 		List<Move> allLegalMoves = null;
 		try {
 			allLegalMoves = theMachine.getLegalMoves(currentState, currentRole);
+			System.out.println("stateMachineSelectMove(): Got " + allLegalMoves.size() + " moves.");
 		} catch (MoveDefinitionException mde) {
 			System.err.println("stateMachineSelectMove(): MoveDefinitionException: " + mde.getMessage());
 		}
@@ -54,9 +55,11 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 			} else {
 				selection = findBestMove(currentState, currentRole, timeout);
 			}
+		} else {
+			System.err.println("stateMachineSelectMove(): ERROR: no legal moves found");
 		}
 		if (selection == null) {
-			System.err.println("stateMachineSelectMove(): ERROR: no legal moves found");
+			System.err.println("stateMachineSelectMove(): ERROR: Could not select a move!  Move selection is null.");
 		}
 		notifyObservers(new GamerSelectedMoveEvent(allLegalMoves, selection, System.currentTimeMillis() - startTimeMs));
 		System.out.println("stateMachineSelectMove(): exiting, move=" + selection);
