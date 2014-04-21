@@ -1,15 +1,16 @@
 package org.ggp.base.player.gamer.statemachine.cs227b;
 
-import org.ggp.base.apps.player.detail.DetailPanel;
-import org.ggp.base.apps.player.detail.SimpleDetailPanel;
-import org.ggp.base.player.gamer.exception.GamePreviewException;
-import org.ggp.base.util.game.Game;
+import java.util.List;
+import java.util.Random;
+
+import org.ggp.base.player.gamer.event.GamerSelectedMoveEvent;
+import org.ggp.base.util.statemachine.MachineState;
+import org.ggp.base.util.statemachine.Move;
+import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.StateMachine;
-import org.ggp.base.util.statemachine.cache.CachedStateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
-import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 /**
  * Base class for Grimgaunt Predator.  Extend this abstract class and implement the following methods:
@@ -22,62 +23,120 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
  */
 public abstract class MinimaxPlayer extends GrimgauntPredatorGamer {
 
-	private static final int TIMEOUT_SAFETY_MARGIN_MS = 1000;
+	private static final int MAX_SEARCH_DEPTH = 20;
+	private static Role Player;
+	private final Random theRandom = new Random();
+	StateMachine theMachine = null;
+	int numberOfRoles = -1;
 
-	/**
-	 * Implement this to build useful game state before game starts.
-	 */
 	@Override
-	public void stateMachineMetaGame(long timeout)
+	public void stateMachineMetaGame(final long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
-		// Does nothing here.  Optional.
+		System.out.println("stateMachineMetaGame(): entering");
+		if (theMachine == null) {
+			theMachine = getStateMachine();
+		}
+		numberOfRoles = theMachine.getRoles().size();
+		System.out.println("stateMachineMetaGame(): exiting, players=" + numberOfRoles);
+	}
+
+	@Override
+	public Move stateMachineSelectMove(final long timeout)
+			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+		final long startTimeMs = System.currentTimeMillis();
+		Role currentRole = getRole();
+		Player = currentRole;
+		final MachineState currentState = getCurrentState();
+		System.out.println("stateMachineSelectMove(): entering, role is " + currentRole + ", timeout is " + timeout);
+		List<Move> allLegalMoves = null;
+		try {
+			allLegalMoves = theMachine.getLegalMoves(currentState, currentRole);
+		} catch (MoveDefinitionException mde) {
+			System.err.println("stateMachineSelectMove(): MoveDefinitionException: " + mde.getMessage());
+		}
+		Move selection = null;
+		if (allLegalMoves != null && !allLegalMoves.isEmpty()) {
+			if (allLegalMoves.size() == 1) {
+				// No choice possible.  Don't bother calling findBestMove.  Most likely the move is noop.
+				selection = allLegalMoves.get(0);
+			} else {
+				selection = findBestMove(currentState, currentRole, timeout);
+			}
+		}
+		if (selection == null) {
+			System.err.println("stateMachineSelectMove(): ERROR: no legal moves found");
+		}
+		notifyObservers(new GamerSelectedMoveEvent(allLegalMoves, selection, System.currentTimeMillis() - startTimeMs));
+		System.out.println("stateMachineSelectMove(): exiting, move=" + selection);
+		return selection;
 	}
 
 	/**
-	 * Returns class name without package name.  Subclasses have distinct names without needing implement getName.
-	 */
-	@Override
-	public String getName() {
-		return this.getClass().getSimpleName();
-	}
-
-	@Override
-	public DetailPanel getDetailPanel() {
-		return new SimpleDetailPanel();
-	}
-
-	@Override
-	public StateMachine getInitialStateMachine() {
-		return new CachedStateMachine(new ProverStateMachine());
-	}
-
-	@Override
-	public void stateMachineStop() {
-		// Do nothing
-	}
-
-	@Override
-	public void stateMachineAbort() {
-		// Do nothing
-	}
-
-	@Override
-	public void preview(Game g, long timeout) throws GamePreviewException {
-		// Do nothing
-	}
-
-	/**
-	 * Are we almost out of time?
+	 * Get best move given current game state, role, maximum search depth and timeout.
 	 *
-     * @param timeout long containing time in milliseconds when we must return
-	 * @return boolean
+	 * @param currentState MachineState
+	 * @param role Role
+	 * @param searchDepth int
+	 * @param timeout long
+	 * @return Move
+	 * @throws MoveDefinitionException
+	 * @throws TransitionDefinitionException
+	 * @throws GoalDefinitionException
 	 */
-	@Override
-	protected boolean isAlmostTimedOut(final long timeout) {
-		return System.currentTimeMillis() > timeout - TIMEOUT_SAFETY_MARGIN_MS;
+	protected Move findBestMove(final MachineState currentState, Role role, final long timeout)
+			throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
+		Move result = null;
+		if (currentState == null || role == null || theMachine == null) {
+			System.err.println("findBestMove(): ERROR: null state, move or role");
+		} else {
+			int bestScoreFound = Integer.MIN_VALUE;
+			final List<Move> legalMovesForRoleInState = theMachine.getLegalMoves(currentState, role);
+			if (legalMovesForRoleInState != null && !legalMovesForRoleInState.isEmpty()) {
+				for (final Move moveUnderConsideration : legalMovesForRoleInState) {
+					if (isAlmostTimedOut(timeout)) {
+						System.err.println("findBestMove(): WARNING: timed out. Searching has ended.");
+						break;
+					}
+					if (moveUnderConsideration == null) {
+						System.err.println("findBestMove(): ERROR: null move gotten");
+					} else {
+						final MachineState nextState = theMachine.getNextState(currentState,
+								theMachine.getRandomJointMove(currentState, role, moveUnderConsideration));
+						final int score = minimize(nextState, moveUnderConsideration, MAX_SEARCH_DEPTH, timeout);
+						if (score > bestScoreFound) {
+							bestScoreFound = score;
+							result = moveUnderConsideration;
+						}
+					}
+				}
+			} else {
+				System.err.println("findBestMove(): ERROR: no legal moves found");
+			}
+		}
+		System.out.println("findBestMove(): exiting, move=" + result);
+		return result;
 	}
 
-	protected class GamerTimeoutException extends Throwable {
-		private static final long serialVersionUID = 1L;
+
+	protected int minimize(final MachineState GameState, final Move searchedMove, int searchDepth, final long timeout)
+			throws GoalDefinitionException, TransitionDefinitionException, MoveDefinitionException {
+		int score = 100;
+		Role role = getRole();
+		GameState
+		List<Move> legalMoves = theMachine.getLegalMoves(GameState, role);
+		for (final Move move : legalMoves) {
+			final MachineState nextState = theMachine.getNextState(GameState,
+					theMachine.getRandomJointMove(GameState, role, move));
+					int newScore = maximize(nextState, move, MAX_SEARCH_DEPTH, timeout);
+		}
+		return Score;
 	}
+
+	protected int maximize(final MachineState GameState, final Move searchedMove, int searchDepth, final long timeout)
+			throws GoalDefinitionException, TransitionDefinitionException, MoveDefinitionException {
+		int score = 0;
+		role = getRole();
+		return 0;
+	}
+
 }
