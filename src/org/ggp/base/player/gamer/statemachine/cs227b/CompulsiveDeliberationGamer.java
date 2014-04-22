@@ -105,22 +105,26 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 							// ***************** Following code ripped off from SampleSearchLightGamer ********************
 						    boolean forcedLoss = false;
 						    if (score > MINIMUM_GAME_GOAL) {
-								for (final List<Move> nextNextJointMove : theMachine.getLegalJointMoves(nextState)) {
-									if (isAlmostTimedOut(timeout)) {
-										System.err.println("findBestMove(): WARNING: timed out. Searching has ended.");
-										break;
-									}
-									try {
-										final MachineState nextNextState = theMachine.getNextState(nextState, nextNextJointMove);
-								    	if (theMachine.isTerminal(nextNextState) && theMachine.getGoal(nextNextState, role) <= MINIMUM_GAME_GOAL) {	// we lose
-											forcedLoss = true;
-											System.err.println("findBestMove(): Considered bad move " + nextNextJointMove + " with score " + score);
+						    	try {
+									for (final List<Move> nextNextJointMove : theMachine.getLegalJointMoves(nextState)) {
+										if (isAlmostTimedOut(timeout)) {
+											System.err.println("findBestMove(): WARNING: timed out. Searching has ended.");
 											break;
-								    	}
-									} catch (GoalDefinitionException gde) {
-										System.err.println("findBestMove(): GoalDefinitionException: " + gde.getMessage());
-									}
-							    }
+										}
+										try {
+											final MachineState nextNextState = theMachine.getNextState(nextState, nextNextJointMove);
+									    	if (theMachine.isTerminal(nextNextState) && theMachine.getGoal(nextNextState, role) <= MINIMUM_GAME_GOAL) {	// we lose
+												forcedLoss = true;
+												System.err.println("findBestMove(): Considered bad move " + nextNextJointMove + " with score " + score);
+												break;
+									    	}
+										} catch (GoalDefinitionException gde) {
+											System.err.println("findBestMove(): GoalDefinitionException: " + gde.getMessage());
+										}
+								    }
+						    	} catch (MoveDefinitionException mse) {
+									System.err.println("findBestMove(): MoveDefinitionException: " + mse.getMessage());
+						    	}
 						    }
 							// *********************************************************************************************
 							if (forcedLoss) {
