@@ -15,6 +15,8 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 /**
  * Compulsive deliberation player example, which is brute-force search, but with search depth
  * limit and timeout limit.
+ * Also, now looks one move ahead to make sure we're not facing a forced loss in the move after the one
+ * having the highest score found so far, as a small prelude to the whole Minimax thing that comes next.
  */
 public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 	private static final int MAX_SEARCH_DEPTH = 20;
@@ -84,7 +86,7 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 		if (currentState == null || role == null || theMachine == null) {
 			System.err.println("findBestMove(): ERROR: null state, move or role");
 		} else {
-			int bestScoreFound = Integer.MIN_VALUE;
+			int bestScoreFound = MINIMUM_GAME_GOAL;
 			final List<Move> legalMovesForRoleInState = theMachine.getLegalMoves(currentState, role);
 			if (legalMovesForRoleInState != null && !legalMovesForRoleInState.isEmpty()) {
 				for (final Move moveUnderConsideration : legalMovesForRoleInState) {
@@ -95,12 +97,39 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 					if (moveUnderConsideration == null) {
 						System.err.println("findBestMove(): ERROR: null move gotten");
 					} else {
-						final MachineState nextState = theMachine.getNextState(currentState,
-								theMachine.getRandomJointMove(currentState, role, moveUnderConsideration));
-						final int score = getMoveScore(nextState, role, moveUnderConsideration, MAX_SEARCH_DEPTH, timeout);
-						if (score > bestScoreFound) {
-							bestScoreFound = score;
-							result = moveUnderConsideration;
+						final List<List<Move>> allLegalJointMoves = theMachine.getLegalJointMoves(currentState, role, moveUnderConsideration);
+						for (final List<Move> nextJointMove : allLegalJointMoves) {
+							//final List<Move> nextJointMove = theMachine.getRandomJointMove(currentState, role, moveUnderConsideration);
+							final MachineState nextState = theMachine.getNextState(currentState, nextJointMove);
+							int score = getMoveScore(nextState, role, moveUnderConsideration, MAX_SEARCH_DEPTH, timeout);
+							// ***************** Following code ripped off from SampleSearchLightGamer ********************
+						    boolean forcedLoss = false;
+						    if (score > MINIMUM_GAME_GOAL) {
+								for (final List<Move> nextNextJointMove : theMachine.getLegalJointMoves(nextState)) {
+									if (isAlmostTimedOut(timeout)) {
+										System.err.println("findBestMove(): WARNING: timed out. Searching has ended.");
+										break;
+									}
+									try {
+										final MachineState nextNextState = theMachine.getNextState(nextState, nextNextJointMove);
+								    	if (theMachine.isTerminal(nextNextState) && theMachine.getGoal(nextNextState, role) <= MINIMUM_GAME_GOAL) {	// we lose
+											forcedLoss = true;
+											System.err.println("findBestMove(): Considered bad move " + nextNextJointMove + " with score " + score);
+											break;
+								    	}
+									} catch (GoalDefinitionException gde) {
+										System.err.println("findBestMove(): GoalDefinitionException: " + gde.getMessage());
+									}
+							    }
+						    }
+							// *********************************************************************************************
+							if (forcedLoss) {
+								score /= 2;			// Still need to consider score, but let's try dividing by two.
+							}
+							if (score > bestScoreFound) {
+								bestScoreFound = score;
+								result = moveUnderConsideration;
+							}
 						}
 					}
 				}
@@ -137,7 +166,7 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 		} else if (searchDepth <= 0) {
 			// No measure of score possible at non-terminal state.  Approximates Random player if search depth is very shallow.
 			System.out.println("getMoveScore(): WARNING: At depth limit, returning random score");
-			result = theRandom.nextInt(MAXIMUM_GAME_GOAL+1);
+			result = theRandom.nextInt(MAXIMUM_GAME_GOAL);		// [0..MAXIMUM_GAME_GOAL-1]
 		} else {
 			final List<Move> legalMovesForRoleInState = theMachine.getLegalMoves(searchedGameState, role);
 			if (legalMovesForRoleInState != null && !legalMovesForRoleInState.isEmpty()) {
