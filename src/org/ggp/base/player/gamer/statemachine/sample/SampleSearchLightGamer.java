@@ -49,6 +49,8 @@ public final class SampleSearchLightGamer extends StateMachineGamer
 	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
 		// Do nothing.
+		// TODO: we may want to look into this too!
+
 	}
 
 	private Random theRandom = new Random();
@@ -67,6 +69,8 @@ public final class SampleSearchLightGamer extends StateMachineGamer
 	@Override
 	public Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
+		// TODO: Improve this code!!!  This is where most of the code will go.
+
 	    StateMachine theMachine = getStateMachine();
 		long start = System.currentTimeMillis();
 		long finishBy = timeout - 1000;
@@ -167,6 +171,7 @@ public final class SampleSearchLightGamer extends StateMachineGamer
 		notifyObservers(new GamerSelectedMoveEvent(moves, selection, stop - start));
 		return selection;
 	}
+
 	@Override
 	public void stateMachineStop() {
 		// Do nothing.
