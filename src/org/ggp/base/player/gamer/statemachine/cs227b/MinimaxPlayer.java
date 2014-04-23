@@ -11,13 +11,14 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class MinimaxPlayer extends GrimgauntPredatorGamer {
 
-	protected static final int MAX_DEPTH = 10;
+	protected static final int MAX_DEPTH = 5;
+	protected static long Start = 0;
 
 	@Override
 	public Move stateMachineSelectMove(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException,
 			GoalDefinitionException {
-		long start = System.currentTimeMillis();
+		Start = System.currentTimeMillis();
 
 		List<Move> moves = getStateMachine().getLegalMoves(getCurrentState(),
 				getRole());
@@ -25,8 +26,7 @@ public class MinimaxPlayer extends GrimgauntPredatorGamer {
 		Move bestMoveSoFar = null;
 
 		for (Move move : moves) {
-			int bestScoreAfterMove = minimaxScoreForMove(getCurrentState(),
-					move);
+			int bestScoreAfterMove = Minimize(getCurrentState(), move, 0);
 			if (bestScoreAfterMove > bestScoreSoFar) {
 				bestScoreSoFar = bestScoreAfterMove;
 				bestMoveSoFar = move;
@@ -39,43 +39,47 @@ public class MinimaxPlayer extends GrimgauntPredatorGamer {
 		long stop = System.currentTimeMillis();
 
 		notifyObservers(new GamerSelectedMoveEvent(moves, bestMoveSoFar, stop
-				- start));
+				- Start));
 		return bestMoveSoFar;
 	}
 
-	private int minimaxScoreForMove(MachineState state, Move myMove)
-			throws TransitionDefinitionException, MoveDefinitionException,
-			GoalDefinitionException {
+	private boolean timeout() {
+		return (System.currentTimeMillis() - Start > TIMEOUT_SAFETY_MARGIN);
+	}
 
+
+	private int Minimize(MachineState state, Move myMove, int depth) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
 		//Minimize
-		int worstScoreSoFar = 100;
-		for (List<Move> jointMove : getStateMachine().getLegalJointMoves(state,
-				getRole(), myMove)) {
-			int bestScoreSoFar = -1;
-			MachineState stateAfterMove = getStateMachine().getNextState(state,
-					jointMove);
-			if (getStateMachine().isTerminal(stateAfterMove)) {
-				bestScoreSoFar = getStateMachine().getGoal(stateAfterMove,
-						getRole());
-			} else {
-				// Choose the move for us in the next state which maximizes our
-				// score
-				List<Move> moves = getStateMachine().getLegalMoves(
-						stateAfterMove, getRole());
-				for (Move myNextMove : moves) {
-					int bestScoreAfterMove = minimaxScoreForMove(
-							stateAfterMove, myNextMove);
-					bestScoreSoFar = Math.max(bestScoreSoFar,
-							bestScoreAfterMove);
-					if (bestScoreSoFar == 100)
+				int worstScoreSoFar = 100;
+				for (List<Move> jointMove : getStateMachine().getLegalJointMoves(state,	getRole(), myMove)) {
+					if (timeout()) break;
+					MachineState stateAfterMove = getStateMachine().getNextState(state, jointMove);
+					int nextScore = Maximize(stateAfterMove, depth);
+					worstScoreSoFar = Math.min(worstScoreSoFar, nextScore);
+					if (worstScoreSoFar == 0)
 						break;
 				}
+				return worstScoreSoFar;
+
+	}
+
+	private int Maximize(MachineState state, int depth) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
+		int bestScoreSoFar = -1;
+		if (getStateMachine().isTerminal(state) || depth > MAX_DEPTH) {
+			bestScoreSoFar = getStateMachine().getGoal(state, getRole());
+		} else {
+			// Maximize
+			List<Move> moves = getStateMachine().getLegalMoves(state, getRole());
+			for (Move myNextMove : moves) {
+				if (timeout())
+					break;
+				int bestScoreAfterMove = Minimize(state, myNextMove, (depth + 1));
+				bestScoreSoFar = Math.max(bestScoreSoFar, bestScoreAfterMove);
+				if (bestScoreSoFar == 100)
+					break;
 			}
-			// Choose the joint move for the opponents that minimizes our score
-			worstScoreSoFar = Math.min(worstScoreSoFar, bestScoreSoFar);
-			if (worstScoreSoFar == 0)
-				break;
 		}
-		return worstScoreSoFar;
+		return bestScoreSoFar;
 	}
 }
+
