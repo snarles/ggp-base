@@ -21,7 +21,7 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
  *			@override public Move stateMachineSelectMove(final long timeout) { Exhaustive search code... }
  *		}
  */
-public abstract class MinimaxPlayer extends GrimgauntPredatorGamer {
+public class MinimaxPlayer extends GrimgauntPredatorGamer {
 
 	private static final int MAX_SEARCH_DEPTH = 20;
 	private static Role Player;
@@ -122,21 +122,34 @@ public abstract class MinimaxPlayer extends GrimgauntPredatorGamer {
 			throws GoalDefinitionException, TransitionDefinitionException, MoveDefinitionException {
 		int score = 100;
 		Role role = getRole();
-		GameState
 		List<Move> legalMoves = theMachine.getLegalMoves(GameState, role);
 		for (final Move move : legalMoves) {
 			final MachineState nextState = theMachine.getNextState(GameState,
 					theMachine.getRandomJointMove(GameState, role, move));
-					int newScore = maximize(nextState, move, MAX_SEARCH_DEPTH, timeout);
+			int newScore = maximize(nextState, move, (searchDepth-1), timeout);
+			if (newScore < score) score = newScore;
 		}
-		return Score;
+		return score;
 	}
 
 	protected int maximize(final MachineState GameState, final Move searchedMove, int searchDepth, final long timeout)
 			throws GoalDefinitionException, TransitionDefinitionException, MoveDefinitionException {
 		int score = 0;
-		role = getRole();
-		return 0;
+		Role role = getRole();
+		List<Move> legalMoves = theMachine.getLegalMoves(GameState, role);
+		for (final Move move : legalMoves) {
+			int newScore = 0;
+			final MachineState nextState = theMachine.getNextState(GameState,
+					theMachine.getRandomJointMove(GameState, role, move));
+			if (searchDepth == 0 || theMachine.isTerminal(GameState)) {
+				newScore = theMachine.getGoal(GameState, role);
+			} else {
+				newScore = minimize(nextState, move, searchDepth, timeout);
+			}
+			if (newScore > score) score = newScore;
+
+		}
+		return score;
 	}
 
 }
