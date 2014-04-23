@@ -63,6 +63,7 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 		if (selection == null) {
 			System.err.println("stateMachineSelectMove(): ERROR: Could not select a move!  Move selection is null.");
 		}
+		// TODO: Fix NullPointerException happening here.  Bug in ggp code?  Need to pull latest?
 		notifyObservers(new GamerSelectedMoveEvent(allLegalMoves, selection, System.currentTimeMillis() - startTimeMs));
 		System.out.println("stateMachineSelectMove(): exiting, move=" + selection);
 		return selection;
@@ -99,12 +100,10 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 					} else {
 						final List<List<Move>> allLegalJointMoves = theMachine.getLegalJointMoves(currentState, role, moveUnderConsideration);
 						for (final List<Move> nextJointMove : allLegalJointMoves) {
-							//final List<Move> nextJointMove = theMachine.getRandomJointMove(currentState, role, moveUnderConsideration);
 							final MachineState nextState = theMachine.getNextState(currentState, nextJointMove);
 							int score = getMoveScore(nextState, role, moveUnderConsideration, MAX_SEARCH_DEPTH, timeout);
 							// ***************** Following code ripped off from SampleSearchLightGamer ********************
-						    boolean forcedLoss = false;
-						    if (score > MINIMUM_GAME_GOAL) {
+							if (!theMachine.isTerminal(nextState) && score > MINIMUM_GAME_GOAL) {
 						    	try {
 									for (final List<Move> nextNextJointMove : theMachine.getLegalJointMoves(nextState)) {
 										if (isAlmostTimedOut(timeout)) {
@@ -114,8 +113,8 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 										try {
 											final MachineState nextNextState = theMachine.getNextState(nextState, nextNextJointMove);
 									    	if (theMachine.isTerminal(nextNextState) && theMachine.getGoal(nextNextState, role) <= MINIMUM_GAME_GOAL) {	// we lose
-												forcedLoss = true;
 												System.err.println("findBestMove(): Considered bad move " + nextNextJointMove + " with score " + score);
+												score = 0;
 												break;
 									    	}
 										} catch (GoalDefinitionException gde) {
@@ -127,9 +126,6 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 						    	}
 						    }
 							// *********************************************************************************************
-							if (forcedLoss) {
-								score /= 2;			// Still need to consider score, but let's try dividing by two.
-							}
 							if (score > bestScoreFound) {
 								bestScoreFound = score;
 								result = moveUnderConsideration;

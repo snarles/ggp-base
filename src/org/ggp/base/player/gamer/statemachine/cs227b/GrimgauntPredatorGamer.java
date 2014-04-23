@@ -57,16 +57,19 @@ public abstract class GrimgauntPredatorGamer extends StateMachineGamer {
 	@Override
 	public void stateMachineStop() {
 		// Do nothing
+		System.out.println("stateMachineStop()");
 	}
 
 	@Override
 	public void stateMachineAbort() {
 		// Do nothing
+		System.out.println("stateMachineAbort()");
 	}
 
 	@Override
 	public void preview(Game g, long timeout) throws GamePreviewException {
 		// Do nothing
+		System.out.println("preview()");
 	}
 
 	/**
