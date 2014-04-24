@@ -14,9 +14,7 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 /**
  * Compulsive deliberation player example, which is brute-force search, but with search depth
- * limit and timeout limit.
- * Also, now looks one move ahead to make sure we're not facing a forced loss in the move after the one
- * having the highest score found so far, as a small prelude to the whole Minimax thing that comes next.
+ * limit returning random score for non-terminal positions and timeout limit.
  */
 public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 	private static final int MAX_SEARCH_DEPTH = 20;
@@ -28,9 +26,7 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 	public void stateMachineMetaGame(final long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 		System.out.println("stateMachineMetaGame(): entering");
-		if (theMachine == null) {
-			theMachine = getStateMachine();
-		}
+		theMachine = getStateMachine();						// Ugly bug fix: Make sure to NOT re-use previous game's StateMachine.
 		numberOfRoles = theMachine.getRoles().size();
 		System.out.println("stateMachineMetaGame(): exiting, players=" + numberOfRoles);
 	}
@@ -63,7 +59,6 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 		if (selection == null) {
 			System.err.println("stateMachineSelectMove(): ERROR: Could not select a move!  Move selection is null.");
 		}
-		// TODO: Fix NullPointerException happening here.  Bug in ggp code?  Need to pull latest?
 		notifyObservers(new GamerSelectedMoveEvent(allLegalMoves, selection, System.currentTimeMillis() - startTimeMs));
 		System.out.println("stateMachineSelectMove(): exiting, move=" + selection);
 		return selection;
@@ -102,30 +97,6 @@ public class CompulsiveDeliberationGamer extends GrimgauntPredatorGamer {
 						for (final List<Move> nextJointMove : allLegalJointMoves) {
 							final MachineState nextState = theMachine.getNextState(currentState, nextJointMove);
 							int score = getMoveScore(nextState, role, moveUnderConsideration, MAX_SEARCH_DEPTH, timeout);
-							// ***************** Following code ripped off from SampleSearchLightGamer ********************
-							if (!theMachine.isTerminal(nextState) && score > MINIMUM_GAME_GOAL) {
-						    	try {
-									for (final List<Move> nextNextJointMove : theMachine.getLegalJointMoves(nextState)) {
-										if (isAlmostTimedOut(timeout)) {
-											System.err.println("findBestMove(): WARNING: timed out. Searching has ended.");
-											break;
-										}
-										try {
-											final MachineState nextNextState = theMachine.getNextState(nextState, nextNextJointMove);
-									    	if (theMachine.isTerminal(nextNextState) && theMachine.getGoal(nextNextState, role) <= MINIMUM_GAME_GOAL) {	// we lose
-												System.err.println("findBestMove(): Considered bad move " + nextNextJointMove + " with score " + score);
-												score = 0;
-												break;
-									    	}
-										} catch (GoalDefinitionException gde) {
-											System.err.println("findBestMove(): GoalDefinitionException: " + gde.getMessage());
-										}
-								    }
-						    	} catch (MoveDefinitionException mse) {
-									System.err.println("findBestMove(): MoveDefinitionException: " + mse.getMessage());
-						    	}
-						    }
-							// *********************************************************************************************
 							if (score > bestScoreFound) {
 								bestScoreFound = score;
 								result = moveUnderConsideration;
