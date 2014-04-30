@@ -26,7 +26,7 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 public abstract class GrimgauntPredatorGamer extends StateMachineGamer {
 
 	protected static final int TIMEOUT = 10000;
-	protected static final int TIMEOUT_SAFETY_MARGIN = 1000;
+	protected static final int TIMEOUT_SAFETY_MARGIN = 9000;
 	protected static final int MINIMUM_GAME_GOAL = 0;
 	protected static final int MAXIMUM_GAME_GOAL = 100;
 
@@ -69,6 +69,7 @@ public abstract class GrimgauntPredatorGamer extends StateMachineGamer {
 
 	@Override
 	public void preview(Game g, long timeout) throws GamePreviewException {
+		System.out.println(timeout);
 		// Do nothing
 	}
 
