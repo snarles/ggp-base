@@ -21,9 +21,14 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
  *			@override public Move stateMachineSelectMove(final long timeout) { Exhaustive search code... }
  *		}
  */
+
+
 public abstract class GrimgauntPredatorGamer extends StateMachineGamer {
 
-	private static final int TIMEOUT_SAFETY_MARGIN_MS = 1000;
+	protected static final int TIMEOUT = 10000;
+	protected static final int TIMEOUT_SAFETY_MARGIN = 1000;
+	protected static final int MINIMUM_GAME_GOAL = 0;
+	protected static final int MAXIMUM_GAME_GOAL = 100;
 
 	/**
 	 * Implement this to build useful game state before game starts.
@@ -74,7 +79,7 @@ public abstract class GrimgauntPredatorGamer extends StateMachineGamer {
 	 * @return boolean
 	 */
 	protected boolean isAlmostTimedOut(final long timeout) {
-		return System.currentTimeMillis() > timeout - TIMEOUT_SAFETY_MARGIN_MS;
+		return System.currentTimeMillis() > timeout - TIMEOUT_SAFETY_MARGIN;
 	}
 
 	protected class GamerTimeoutException extends Throwable {
