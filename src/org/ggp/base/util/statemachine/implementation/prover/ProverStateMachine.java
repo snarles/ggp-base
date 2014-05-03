@@ -3,14 +3,11 @@ package org.ggp.base.util.statemachine.implementation.prover;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentMap;
 
 import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.gdl.grammar.GdlConstant;
-import org.ggp.base.util.gdl.grammar.GdlPool; //new
 import org.ggp.base.util.gdl.grammar.GdlRelation;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
-import org.ggp.base.util.gdl.grammar.GdlTerm;
 import org.ggp.base.util.logging.GamerLogger;
 import org.ggp.base.util.prover.Prover;
 import org.ggp.base.util.prover.aima.AimaProver;
@@ -23,6 +20,7 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.query.ProverQueryBuilder;
 import org.ggp.base.util.statemachine.implementation.prover.result.ProverResultParser;
+//new
 
 
 public class ProverStateMachine extends StateMachine
@@ -125,24 +123,7 @@ public class ProverStateMachine extends StateMachine
 	}
 
 	//new
-	public void qqquery()
-	{
-		ConcurrentMap<GdlConstant, ConcurrentMap<List<GdlTerm>, GdlRelation>> relationPool= GdlPool.getTheWholeRelationPool();
-		Set<GdlConstant> ks=relationPool.keySet();
-		for (GdlConstant k : ks){
-			System.out.println("KEY0");
-			System.out.println(k.toString());
-			ConcurrentMap<List<GdlTerm>, GdlRelation> v = relationPool.get(k);
-			Set<List<GdlTerm>> v1 = v.keySet();
-			for (List<GdlTerm> v2 : v1) {
-				System.out.println("KEY1");
-				for (GdlTerm gg : v2) {
-					System.out.println(gg.toString());
-				}
-				System.out.println("VAL1");
-				GdlRelation v3 = v.get(v2);
-				System.out.println(v3.toString());
-			}
-		}
+	public Prover getProver() {
+		return prover;
 	}
 }
