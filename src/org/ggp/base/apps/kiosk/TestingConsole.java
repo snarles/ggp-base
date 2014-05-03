@@ -11,7 +11,6 @@ import org.ggp.base.util.game.Game;
 import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
-import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
@@ -19,8 +18,19 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 
 public class TestingConsole {
+	//Change this:
+	String dir = "C:/github/ggp-base/games/gamemaster/";
+	//String gamef = "alquerque.kif";
+	//String gamef = "connectfour.kif";
+	String gamef = "pentago.kif";
+	//String gamef = "skirmish.kif";
+
+
+	String gameFile = dir.concat(gamef);
 	StateMachine psm = new ProverStateMachine();
 	MachineState currentState;
+	int currentTurn = -1;
+	boolean messageEachTurn = true;
 
 	public static void main(String[] args) throws IOException, MoveDefinitionException, FileNotFoundException, TransitionDefinitionException {
 		TestingConsole tc = new TestingConsole();
@@ -40,7 +50,8 @@ public class TestingConsole {
 		MachineState newState;
 		List<List<Move>> legals;
 
-		String gameFile = "C:/github/ggp-base/games/gamemaster/skirmish.kif";
+
+
 		/**BufferedReader gameRead = new BufferedReader(new FileReader(gameFile));
 		String text = gameRead.read();
 		System.out.println(text);**/
@@ -58,29 +69,56 @@ public class TestingConsole {
 
 		start = System.currentTimeMillis();
 		//StateMachine psm = new ProverStateMachine();
+		//psm = new CachedStateMachine(psm);
 		psm.initialize(theRules);
 		elapsed = System.currentTimeMillis()-start;
 		message = "Time to initialize: ";
 		message = message.concat(String.valueOf(elapsed));
 		System.out.println(message);
 
-		start = System.currentTimeMillis();
-		currentState = psm.getInitialState();
-		elapsed = System.currentTimeMillis()-start;
-		message = "Time to get initial state: ";
-		message = message.concat(String.valueOf(elapsed));
-		System.out.println(message);
 
 		//System.out.println(currentState.toString());
+		int nits = 1;
+		messageEachTurn= false; nits=5;
+		for (int j =1; j< 1+nits; j++) {
+			currentTurn = -1;
+			start = System.currentTimeMillis();
+			for (int i = 1; i < 15; i++) {
+				randomAdvance();
+			}
+			elapsed = System.currentTimeMillis()-start;
 
-		List<Role> roles = psm.getRoles();
-		for (int i = 1; i < 11; i++) {
-			System.out.println("Iteration: ".concat(String.valueOf(i)));
+			message = "Total time: ";
+			message = message.concat(String.valueOf(elapsed));
+			System.out.println(message);
+		}
+	}
+
+	// chooses a legal joint move at random and advances the game
+	public void randomAdvance() throws TransitionDefinitionException, MoveDefinitionException {
+		long start; long elapsed; String message;
+		List<Move> selectedMove;
+		List<List<Move>> legals;
+		if (currentTurn == -1) {
+			currentTurn++;
+			start = System.currentTimeMillis();
+			currentState = psm.getInitialState();
+			elapsed = System.currentTimeMillis()-start;
+			message = "Time to get initial state: ";
+			message = message.concat(String.valueOf(elapsed));
+			if (messageEachTurn) {
+				System.out.println(message);
+			}
+		}
+		else {
+			currentTurn++;
+			if (messageEachTurn) {
+				System.out.println("Turn: ".concat(String.valueOf(currentTurn)));
+			}
 			legals = getMoves();
 			selectedMove = legals.get(new Random().nextInt(legals.size()));
 			currentState = getNextState(selectedMove);
 		}
-
 	}
 
 	public List<List<Move>> getMoves() throws MoveDefinitionException {
@@ -89,7 +127,9 @@ public class TestingConsole {
 		long elapsed = System.currentTimeMillis()-start;
 		String message = "Time to get moves: ";
 		message = message.concat(String.valueOf(elapsed));
-		System.out.println(message);
+		if (messageEachTurn) {
+			System.out.println(message);
+		}
 		return moves;
 	}
 
@@ -99,7 +139,9 @@ public class TestingConsole {
 		long elapsed = System.currentTimeMillis()-start;
 		String message = "Time to get next state: ";
 		message = message.concat(String.valueOf(elapsed));
-		System.out.println(message);
+		if (messageEachTurn) {
+			System.out.println(message);
+		}
 		return newState;
 	}
 
