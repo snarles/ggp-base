@@ -58,11 +58,13 @@ public class TestingConsole {
 	int currentTurn = -1;
 	boolean messageEachTurn = true;
 	boolean messageEachStep = true;
-	int maxprint = 1000;
+	int maxprint = 2000;
 	int printcounter = 0;
 	int recursionDepth = 0;
 	String[] recursionPadding = {"R0:"," R1:","  R2:","   R3:","    R4:","     R5:","      R6:","       R7:","        R8:","         R9:","          R10:"};
-	int printdepth = 7;
+	int printdepth = 8;
+
+	int resultType = 0;
 
 	public static void main(String[] args) throws IOException, MoveDefinitionException, FileNotFoundException, TransitionDefinitionException {
 		TestingConsole tc = new TestingConsole();
@@ -243,6 +245,7 @@ public class TestingConsole {
 
 	private Set<GdlSentence> ask(GdlSentence query, Set<GdlSentence> context, boolean askOne)
 	{
+		//System.out.println("****FIRST ASK");
 		LinkedList<GdlLiteral> goals = new LinkedList<GdlLiteral>();
 		goals.add(query);
 
@@ -276,12 +279,18 @@ public class TestingConsole {
 
 		ask(goals, ct, new Substitution(), new ProverCache(), new VariableRenamer(), askOne, answers, alreadyAsking);
 
+		start = System.currentTimeMillis();
 		Set<GdlSentence> results = new HashSet<GdlSentence>();
 		for (Substitution theta : answers)
 		{
 			results.add(Substituter.substitute(query, theta));
 		}
-
+		elapsed = System.currentTimeMillis()-start;
+		message = "Time to get results: ";
+		message = message.concat(String.valueOf(elapsed));
+		if (messageEachTurn) {
+			System.out.println(message);
+		}
 		return results;
 	}
 
@@ -297,6 +306,14 @@ public class TestingConsole {
 		{
 			//printd("No goals");
 			results.add(theta);
+			String rmessage = "Result: ";
+			if (resultType ==1) {
+				rmessage = "NotResult:";
+			}
+			if (resultType ==2) {
+				rmessage = "SntResult:";
+			}
+			printd(rmessage.concat(theta.toString()).concat(" no. ").concat(String.valueOf(results.size())));
 		}
 		else
 		{
@@ -350,6 +367,7 @@ public class TestingConsole {
 
 			goals.addFirst(literal);
 		}
+
 		recursionDepth--;
 	}
 
@@ -372,7 +390,10 @@ public class TestingConsole {
 		notGoals.add(not.getBody());
 
 		Set<Substitution> notResults = new HashSet<Substitution>();
+		int oldresultType = resultType;
+		resultType=1;
 		ask(notGoals, context, theta, cache, renamer, true, notResults, alreadyAsking);
+		resultType=oldresultType;
 
 		if (notResults.size() == 0)
 		{
@@ -382,6 +403,7 @@ public class TestingConsole {
 
 	public GdlSentence askOne(GdlSentence query, Set<GdlSentence> context)
 	{
+		System.out.println("********askone");
 		Set<GdlSentence> results = ask(query, context, true);
 		return (results.size() > 0) ? results.iterator().next() : null;
 	}
@@ -448,8 +470,10 @@ public class TestingConsole {
 					{
 						sentenceGoals.add(r.get(i));
 					}
-
+					int oldresultType = resultType;
+					resultType = 2;
 					ask(sentenceGoals, context, theta.compose(thetaPrime), cache, renamer, false, sentenceResults, alreadyAsking);
+					resultType = oldresultType;
 				}
 				else {
 					grulecount++;
@@ -472,8 +496,10 @@ public class TestingConsole {
 					{
 						sentenceGoals.add(r.get(i));
 					}
-
+					int oldresultType = resultType;
+					resultType = 2;
 					ask(sentenceGoals, context, theta.compose(thetaPrime), cache, renamer, false, sentenceResults, alreadyAsking);
+					resultType = oldresultType;
 				}
 				else {
 					srulecount++;
@@ -490,9 +516,12 @@ public class TestingConsole {
 			cache.put(sentence, sentenceResults);
 			alreadyAsking.remove(sentence);
 		}
-
+		List<Substitution> cgs = cache.get(sentence);
+		if (cgs.size() > 0) {
+			printd("Sentence theta--".concat(sentence.toString()).concat(" size ").concat(String.valueOf(cgs.size())));
+		}
 		long start = System.currentTimeMillis();
-		for (Substitution thetaPrime : cache.get(sentence))
+		for (Substitution thetaPrime : cgs)
 		{
 			ask(goals, context, theta.compose(thetaPrime), cache, renamer, askOne, results, alreadyAsking);
 			if (askOne && (results.size() > 0))
@@ -501,7 +530,9 @@ public class TestingConsole {
 			}
 		}
 		long elapsed = System.currentTimeMillis()-start;
-		printd("Theta call: ".concat(String.valueOf(elapsed)));
+		if (cgs.size() > 0) {
+			printd("Theta call: ".concat(String.valueOf(elapsed)));
+		}
 	}
 
 	public boolean prove(GdlSentence query, Set<GdlSentence> context)
