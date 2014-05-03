@@ -46,4 +46,9 @@ public final class KnowledgeBase
 			return new ArrayList<GdlRule>();
 		}
 	}
+
+	//New methods
+	public Map<GdlConstant, List<GdlRule>> getContents() {
+		return contents;
+	}
 }

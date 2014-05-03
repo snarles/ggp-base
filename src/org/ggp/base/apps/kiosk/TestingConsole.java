@@ -58,6 +58,11 @@ public class TestingConsole {
 	int currentTurn = -1;
 	boolean messageEachTurn = true;
 	boolean messageEachStep = true;
+	int maxprint = 1000;
+	int printcounter = 0;
+	int recursionDepth = 0;
+	String[] recursionPadding = {"R0:"," R1:","  R2:","   R3:","    R4:","     R5:","      R6:","       R7:","        R8:","         R9:","          R10:"};
+	int printdepth = 7;
 
 	public static void main(String[] args) throws IOException, MoveDefinitionException, FileNotFoundException, TransitionDefinitionException {
 		TestingConsole tc = new TestingConsole();
@@ -87,7 +92,7 @@ public class TestingConsole {
 		scanman.close();
 		//System.out.println(content);
 		String content2 = Game.preprocessRulesheet(content);
-		System.out.println(content2);
+		//System.out.println(content2);
 		Game theGame = Game.createEphemeralGame(content2);
 		List<Gdl> theRules = theGame.getRules();
 		//for (Gdl g : theRules) {
@@ -252,6 +257,18 @@ public class TestingConsole {
 		if (messageEachTurn) {
 			System.out.println(message);
 		}
+		System.out.println(currentState.toString());
+		/**
+		Map<GdlConstant, List<GdlRule>> ctcontents = ct.getContents();
+
+		for (GdlConstant gc : ctcontents.keySet()) {
+			System.out.println("KEY: ".concat(gc.toString()));
+			List<GdlRule> vals = ctcontents.get(gc);
+			for (GdlRule v : vals) {
+				System.out.println("  VALUE: ".concat(v.toString()));
+			}
+		}
+		**/
 
 		for (GdlLiteral goal : goals) {
 			System.out.println("GOAL:".concat(goal.toString()));
@@ -270,28 +287,45 @@ public class TestingConsole {
 
 	private void ask(LinkedList<GdlLiteral> goals, KnowledgeBase context, Substitution theta, ProverCache cache, VariableRenamer renamer, boolean askOne, Set<Substitution> results, Set<GdlSentence> alreadyAsking)
 	{
+		recursionDepth++;
 		String message = "";
 		if (goals.size() > 0) {
-			message = message.concat(" Goals size:");
+			message = message.concat("Goals size:");
 			message = message.concat(String.valueOf(goals.size()));
 		}
 		if (goals.size() == 0)
 		{
+			//printd("No goals");
 			results.add(theta);
 		}
 		else
 		{
 			GdlLiteral literal = goals.removeFirst();
 			GdlLiteral qPrime = Substituter.substitute(literal, theta);
+
+			if (qPrime instanceof GdlDistinct)
+			{
+				message = message.concat("[Distinct] ");
+			}
+			else if (qPrime instanceof GdlNot)
+			{
+				message = message.concat("[Not] ");
+			}
+			else if (qPrime instanceof GdlOr)
+			{
+				message = message.concat("[Or] ");
+			}
+			else {
+				message = message.concat("[Sentence] ");
+			}
+			message = message.concat(" literal: ");
+			message = message.concat(literal.toString());
+
 			message = message.concat(" qPrime: ");
 			message = message.concat(qPrime.toString());
-			if (messageEachStep) {
-				if (goals.size() > 1) {
-					System.out.println(message);
-					for (GdlLiteral goal : goals) {
-						System.out.println("GOAL:".concat(goal.toString()));
-					}
-				}
+			printd(message);
+			for (GdlLiteral goal : goals) {
+				printd("GOAL:".concat(goal.toString()));
 			}
 			if (qPrime instanceof GdlDistinct)
 			{
@@ -316,6 +350,7 @@ public class TestingConsole {
 
 			goals.addFirst(literal);
 		}
+		recursionDepth--;
 	}
 
 	public Set<GdlSentence> askAll(GdlSentence query, Set<GdlSentence> context)
@@ -366,8 +401,22 @@ public class TestingConsole {
 		}
 	}
 
+	public void printd(String s) {
+		if (printcounter < maxprint && messageEachStep  && recursionDepth < printdepth) {
+			printcounter++;
+			System.out.println(recursionPadding[recursionDepth].concat(s));
+		}
+		if (printcounter == maxprint) {
+			System.out.println("PRINT LIMIT REACHED");
+			printcounter++;
+		}
+	}
+
 	private void askSentence(GdlSentence sentence, LinkedList<GdlLiteral> goals, KnowledgeBase context, Substitution theta, ProverCache cache, VariableRenamer renamer, boolean askOne, Set<Substitution> results, Set<GdlSentence> alreadyAsking)
 	{
+		if (cache.contains(sentence)) {
+			printd("Cache Contains Sentence");
+		}
 		if (!cache.contains(sentence))
 		{
 			//Prevent infinite loops on certain recursive queries.
@@ -376,17 +425,24 @@ public class TestingConsole {
 			}
 			alreadyAsking.add(sentence);
 			List<GdlRule> candidates = new ArrayList<GdlRule>();
+			List<GdlRule> candidates2 = new ArrayList<GdlRule>();
 			candidates.addAll(knowledgeBase.fetch(sentence));
-			candidates.addAll(context.fetch(sentence));
+			candidates2.addAll(context.fetch(sentence));
 
 			Set<Substitution> sentenceResults = new HashSet<Substitution>();
+			long start = System.currentTimeMillis();
+			printd("Candidates:");
+
+			int grulecount = 0;
 			for (GdlRule rule : candidates)
 			{
 				GdlRule r = renamer.rename(rule);
 				Substitution thetaPrime = Unifier.unify(r.getHead(), sentence);
 
+
 				if (thetaPrime != null)
 				{
+					printd("G.rule: ".concat(rule.toString()));
 					LinkedList<GdlLiteral> sentenceGoals = new LinkedList<GdlLiteral>();
 					for (int i = 0; i < r.arity(); i++)
 					{
@@ -395,12 +451,47 @@ public class TestingConsole {
 
 					ask(sentenceGoals, context, theta.compose(thetaPrime), cache, renamer, false, sentenceResults, alreadyAsking);
 				}
+				else {
+					grulecount++;
+				}
 			}
+			if (grulecount > 0) {
+				printd("Null game rules: ".concat(String.valueOf(grulecount)));
+			}
+			int srulecount = 0;
+			for (GdlRule rule : candidates2)
+			{
+				GdlRule r = renamer.rename(rule);
+				Substitution thetaPrime = Unifier.unify(r.getHead(), sentence);
+
+				if (thetaPrime != null)
+				{
+					printd("State rule: ".concat(rule.toString()));
+					LinkedList<GdlLiteral> sentenceGoals = new LinkedList<GdlLiteral>();
+					for (int i = 0; i < r.arity(); i++)
+					{
+						sentenceGoals.add(r.get(i));
+					}
+
+					ask(sentenceGoals, context, theta.compose(thetaPrime), cache, renamer, false, sentenceResults, alreadyAsking);
+				}
+				else {
+					srulecount++;
+				}
+			}
+			if (srulecount > 0) {
+				printd("Null state rules: ".concat(String.valueOf(srulecount)));
+			}
+
+
+			long elapsed = System.currentTimeMillis()-start;
+			printd("Candidates call: ".concat(String.valueOf(elapsed)));
 
 			cache.put(sentence, sentenceResults);
 			alreadyAsking.remove(sentence);
 		}
 
+		long start = System.currentTimeMillis();
 		for (Substitution thetaPrime : cache.get(sentence))
 		{
 			ask(goals, context, theta.compose(thetaPrime), cache, renamer, askOne, results, alreadyAsking);
@@ -409,6 +500,8 @@ public class TestingConsole {
 				break;
 			}
 		}
+		long elapsed = System.currentTimeMillis()-start;
+		printd("Theta call: ".concat(String.valueOf(elapsed)));
 	}
 
 	public boolean prove(GdlSentence query, Set<GdlSentence> context)
