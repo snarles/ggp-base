@@ -191,4 +191,9 @@ public final class AimaProver extends Prover
 		return askOne(query, context) != null;
 	}
 
+	//Added methods
+	public KnowledgeBase getKnowledgeBase() {
+		return knowledgeBase;
+	}
+
 }
