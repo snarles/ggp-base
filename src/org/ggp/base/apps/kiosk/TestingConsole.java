@@ -48,10 +48,11 @@ public class TestingConsole {
 
 	//String gamef = "alquerque.kif";
 	//String gamef = "connectfour.kif";
-	String gamef = "chinesecheckers.kif";
+	//String gamef = "checkersonabarrelnokings.kif";
+	//String gamef = "chinesecheckers.kif";
 	//String gamef = "hex.kif";
 	//String gamef = "pentago.kif";
-	//String gamef = "skirmish.kif";
+	String gamef = "skirmish.kif";
 
 
 	String gameFile = dir.concat(gamef);
@@ -137,13 +138,13 @@ public class TestingConsole {
 		**/
 
 		// Play 5 turns so that the GdlPool is loaded
-		messageEachTurn = false;
-		for (int i = 1; i < 5; i++) {
+		//messageEachTurn = false;
+		for (int i = 1; i < 50; i++) {
 			randomAdvance();
 		}
 		messageEachTurn = true;
 
-		legals = getMovesDetailed();
+		//legals = getMovesDetailed();
 
 
 	}
