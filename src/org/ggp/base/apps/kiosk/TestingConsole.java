@@ -1,8 +1,10 @@
 package org.ggp.base.apps.kiosk;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -58,7 +60,7 @@ public class TestingConsole {
 	int currentTurn = -1;
 	boolean messageEachTurn = true;
 	boolean messageEachStep = true;
-	int maxprint = 2000;
+	int maxprint = 1000;
 	int printcounter = 0;
 	int recursionDepth = 0;
 	String[] recursionPadding = {"R0:"," R1:","  R2:","   R3:","    R4:","     R5:","      R6:","       R7:","        R8:","         R9:","          R10:"};
@@ -183,7 +185,7 @@ public class TestingConsole {
 		return moves;
 	}
 
-	public List<List<Move>> getMovesDetailed() throws MoveDefinitionException {
+	public List<List<Move>> getMovesDetailed() throws MoveDefinitionException, IOException {
 		MachineState state = currentState;
         List<List<Move>> legals = new ArrayList<List<Move>>();
         for (Role role : psm.getRoles()) {
@@ -209,7 +211,7 @@ public class TestingConsole {
         }
     }
 
-	public List<Move> getLegalMovesDetailed(MachineState state, Role role) throws MoveDefinitionException
+	public List<Move> getLegalMovesDetailed(MachineState state, Role role) throws MoveDefinitionException, IOException
 	{
 		long start = System.currentTimeMillis();
 		Set<GdlSentence> results = askAll(ProverQueryBuilder.getLegalQuery(role), ProverQueryBuilder.getContext(state));
@@ -243,7 +245,7 @@ public class TestingConsole {
 
 	//Methods pasted from AimaProver
 
-	private Set<GdlSentence> ask(GdlSentence query, Set<GdlSentence> context, boolean askOne)
+	private Set<GdlSentence> ask(GdlSentence query, Set<GdlSentence> context, boolean askOne) throws IOException
 	{
 		//System.out.println("****FIRST ASK");
 		LinkedList<GdlLiteral> goals = new LinkedList<GdlLiteral>();
@@ -294,7 +296,7 @@ public class TestingConsole {
 		return results;
 	}
 
-	private void ask(LinkedList<GdlLiteral> goals, KnowledgeBase context, Substitution theta, ProverCache cache, VariableRenamer renamer, boolean askOne, Set<Substitution> results, Set<GdlSentence> alreadyAsking)
+	private void ask(LinkedList<GdlLiteral> goals, KnowledgeBase context, Substitution theta, ProverCache cache, VariableRenamer renamer, boolean askOne, Set<Substitution> results, Set<GdlSentence> alreadyAsking) throws IOException
 	{
 		recursionDepth++;
 		String message = "";
@@ -371,12 +373,12 @@ public class TestingConsole {
 		recursionDepth--;
 	}
 
-	public Set<GdlSentence> askAll(GdlSentence query, Set<GdlSentence> context)
+	public Set<GdlSentence> askAll(GdlSentence query, Set<GdlSentence> context) throws IOException
 	{
 		return ask(query, context, false);
 	}
 
-	private void askDistinct(GdlDistinct distinct, LinkedList<GdlLiteral> goals, KnowledgeBase context, Substitution theta, ProverCache cache, VariableRenamer renamer, boolean askOne, Set<Substitution> results, Set<GdlSentence> alreadyAsking)
+	private void askDistinct(GdlDistinct distinct, LinkedList<GdlLiteral> goals, KnowledgeBase context, Substitution theta, ProverCache cache, VariableRenamer renamer, boolean askOne, Set<Substitution> results, Set<GdlSentence> alreadyAsking) throws IOException
 	{
 		if (!distinct.getArg1().equals(distinct.getArg2()))
 		{
@@ -384,7 +386,7 @@ public class TestingConsole {
 		}
 	}
 
-	private void askNot(GdlNot not, LinkedList<GdlLiteral> goals, KnowledgeBase context, Substitution theta, ProverCache cache, VariableRenamer renamer, boolean askOne, Set<Substitution> results, Set<GdlSentence> alreadyAsking)
+	private void askNot(GdlNot not, LinkedList<GdlLiteral> goals, KnowledgeBase context, Substitution theta, ProverCache cache, VariableRenamer renamer, boolean askOne, Set<Substitution> results, Set<GdlSentence> alreadyAsking) throws IOException
 	{
 		LinkedList<GdlLiteral> notGoals = new LinkedList<GdlLiteral>();
 		notGoals.add(not.getBody());
@@ -401,14 +403,14 @@ public class TestingConsole {
 		}
 	}
 
-	public GdlSentence askOne(GdlSentence query, Set<GdlSentence> context)
+	public GdlSentence askOne(GdlSentence query, Set<GdlSentence> context) throws IOException
 	{
 		System.out.println("********askone");
 		Set<GdlSentence> results = ask(query, context, true);
 		return (results.size() > 0) ? results.iterator().next() : null;
 	}
 
-	private void askOr(GdlOr or, LinkedList<GdlLiteral> goals, KnowledgeBase context, Substitution theta, ProverCache cache, VariableRenamer renamer, boolean askOne, Set<Substitution> results, Set<GdlSentence> alreadyAsking)
+	private void askOr(GdlOr or, LinkedList<GdlLiteral> goals, KnowledgeBase context, Substitution theta, ProverCache cache, VariableRenamer renamer, boolean askOne, Set<Substitution> results, Set<GdlSentence> alreadyAsking) throws IOException
 	{
 		for (int i = 0; i < or.arity(); i++)
 		{
@@ -423,18 +425,21 @@ public class TestingConsole {
 		}
 	}
 
-	public void printd(String s) {
+	public void printd(String s) throws IOException {
+		if (printcounter == maxprint) {
+			System.out.println("PRINT LIMIT REACHED");
+			BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+			System.out.println("Press enter");
+			String temp = in.readLine();
+			printcounter = 0;
+		}
 		if (printcounter < maxprint && messageEachStep  && recursionDepth < printdepth) {
 			printcounter++;
 			System.out.println(recursionPadding[recursionDepth].concat(s));
 		}
-		if (printcounter == maxprint) {
-			System.out.println("PRINT LIMIT REACHED");
-			printcounter++;
-		}
 	}
 
-	private void askSentence(GdlSentence sentence, LinkedList<GdlLiteral> goals, KnowledgeBase context, Substitution theta, ProverCache cache, VariableRenamer renamer, boolean askOne, Set<Substitution> results, Set<GdlSentence> alreadyAsking)
+	private void askSentence(GdlSentence sentence, LinkedList<GdlLiteral> goals, KnowledgeBase context, Substitution theta, ProverCache cache, VariableRenamer renamer, boolean askOne, Set<Substitution> results, Set<GdlSentence> alreadyAsking) throws IOException
 	{
 		if (cache.contains(sentence)) {
 			printd("Cache Contains Sentence");
@@ -453,6 +458,7 @@ public class TestingConsole {
 
 			Set<Substitution> sentenceResults = new HashSet<Substitution>();
 			long start = System.currentTimeMillis();
+			printd("Theta:".concat(theta.toString()));
 			printd("Candidates:");
 
 			int grulecount = 0;
@@ -535,7 +541,7 @@ public class TestingConsole {
 		}
 	}
 
-	public boolean prove(GdlSentence query, Set<GdlSentence> context)
+	public boolean prove(GdlSentence query, Set<GdlSentence> context) throws IOException
 	{
 		return askOne(query, context) != null;
 	}
