@@ -48,8 +48,10 @@ public class TestingConsole {
 
 	//String gamef = "alquerque.kif";
 	//String gamef = "connectfour.kif";
+	String gamef = "chinesecheckers.kif";
+	//String gamef = "hex.kif";
 	//String gamef = "pentago.kif";
-	String gamef = "skirmish.kif";
+	//String gamef = "skirmish.kif";
 
 
 	String gameFile = dir.concat(gamef);
