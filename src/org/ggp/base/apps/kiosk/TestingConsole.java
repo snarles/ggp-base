@@ -1,14 +1,22 @@
 package org.ggp.base.apps.kiosk;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
 
+import org.ggp.base.player.gamer.exception.MetaGamingException;
+import org.ggp.base.player.gamer.exception.MoveSelectionException;
+import org.ggp.base.player.gamer.statemachine.cs227b.MCTSGamer;
 import org.ggp.base.util.game.Game;
 import org.ggp.base.util.gdl.grammar.Gdl;
+import org.ggp.base.util.gdl.grammar.GdlConstant;
+import org.ggp.base.util.gdl.grammar.GdlTerm;
+import org.ggp.base.util.match.Match;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.StateMachine;
@@ -32,12 +40,44 @@ public class TestingConsole {
 	int currentTurn = -1;
 	boolean messageEachTurn = true;
 
-	public static void main(String[] args) throws IOException, MoveDefinitionException, FileNotFoundException, TransitionDefinitionException {
+	public static void main(String[] args) throws IOException, MoveDefinitionException, FileNotFoundException, TransitionDefinitionException, MetaGamingException, MoveSelectionException {
 		TestingConsole tc = new TestingConsole();
 		tc.run();
 	}
 
-	public void run() throws IOException, MoveDefinitionException, FileNotFoundException, TransitionDefinitionException {
+	public void run() throws IOException, MoveDefinitionException, FileNotFoundException, TransitionDefinitionException, MetaGamingException, MoveSelectionException {
+		Scanner scanman = new Scanner(new File(gameFile));
+		String content = scanman.useDelimiter("\\Z").next();
+		scanman.close();
+		//System.out.println(content);
+		String content2 = Game.preprocessRulesheet(content);
+		System.out.println(content2);
+		Game theGame = Game.createEphemeralGame(content2);
+		List<Gdl> theRules = theGame.getRules();
+		psm.initialize(theRules);
+
+		Match theMatch = new Match("test",-1,10,10,theGame);
+		MCTSGamer sean = new MCTSGamer();
+		sean.setName("sean");
+		MCTSGamer charles = new MCTSGamer();
+		charles.setName("charles");
+		GdlConstant r = psm.getRoles().get(0).getName();
+		GdlConstant r2 = psm.getRoles().get(1).getName();
+		sean.setMatch(theMatch);
+		sean.setRoleName(r);
+		charles.setMatch(theMatch);
+		charles.setRoleName(r2);
+
+		long receptionTime = System.currentTimeMillis();
+		sean.metaGame(receptionTime + 10000);
+		charles.metaGame(System.currentTimeMillis() + 10000);
+		GdlTerm move1 = sean.selectMove(System.currentTimeMillis() + 30000);
+		pause();
+		GdlTerm move2 = charles.selectMove(System.currentTimeMillis() + 30000);
+		//System.out.println(move.toString());
+	}
+
+	public void run2() throws IOException, MoveDefinitionException, FileNotFoundException, TransitionDefinitionException {
 		/**BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 		System.out.println("Enter game file");
 		String gameFile = in.readLine();**/
@@ -143,6 +183,17 @@ public class TestingConsole {
 			System.out.println(message);
 		}
 		return newState;
+	}
+
+	public void pause() {
+		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+		System.out.println("Enter game file");
+		try {
+			String gameFile = in.readLine();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 }
