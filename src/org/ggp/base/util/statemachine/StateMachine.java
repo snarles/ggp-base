@@ -22,6 +22,8 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
  */
 public abstract class StateMachine
 {
+	protected long seed = 0;
+	protected Random rand = new Random(seed);
     // ============================================
     //          Stubs for implementations
     // ============================================
@@ -321,7 +323,7 @@ public abstract class StateMachine
     public Move getRandomMove(MachineState state, Role role) throws MoveDefinitionException
     {
         List<Move> legals = getLegalMoves(state, role);
-        return legals.get(new Random().nextInt(legals.size()));
+        return legals.get(rand.nextInt(legals.size()));
     }
 
     /**
@@ -408,4 +410,9 @@ public abstract class StateMachine
         }
         return harvestedRelations.keySet();
     }
+
+	public void setSeed(long newSeed) {
+		this.seed = newSeed;
+		this.rand = new Random(seed);
+	}
 }

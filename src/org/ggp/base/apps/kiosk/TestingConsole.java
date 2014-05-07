@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
@@ -27,10 +28,11 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 public class TestingConsole {
 	//Change this:
-	String dir = "C:/github/ggp-base/games/gamemaster/";
-	//String gamef = "alquerque.kif";
+	//String dir = "C:/github/ggp-base/games/gamemaster/";
+	String dir = "/Users/snarles/github/ggp-base/games/gamemaster/";
+	String gamef = "alquerque.kif";
 	//String gamef = "connectfour.kif";
-	String gamef = "pentago.kif";
+	//String gamef = "pentago.kif";
 	//String gamef = "skirmish.kif";
 
 
@@ -61,19 +63,49 @@ public class TestingConsole {
 		sean.setName("sean");
 		MCTSGamer charles = new MCTSGamer();
 		charles.setName("charles");
+
 		GdlConstant r = psm.getRoles().get(0).getName();
 		GdlConstant r2 = psm.getRoles().get(1).getName();
 		sean.setMatch(theMatch);
 		sean.setRoleName(r);
+
 		charles.setMatch(theMatch);
 		charles.setRoleName(r2);
 
 		long receptionTime = System.currentTimeMillis();
 		sean.metaGame(receptionTime + 10000);
+		sean.setSeed(0);
 		charles.metaGame(System.currentTimeMillis() + 10000);
-		GdlTerm move1 = sean.selectMove(System.currentTimeMillis() + 30000);
-		pause();
-		GdlTerm move2 = charles.selectMove(System.currentTimeMillis() + 30000);
+		charles.setSeed(0);
+
+		long start;
+		long timelimit = 10000;
+		boolean gameOver = false;
+		boolean pauser = false;
+		while(!gameOver) {
+			start = System.currentTimeMillis();
+			GdlTerm move1 = sean.selectMove(start + timelimit);
+			System.out.println(String.valueOf(System.currentTimeMillis() - start));
+			if (pauser) {
+				pause();
+			}
+			start = System.currentTimeMillis();
+			GdlTerm move2 = charles.selectMove(start+ timelimit);
+			System.out.println(String.valueOf(System.currentTimeMillis() - start));
+			MachineState state = sean.getCurrentState();
+			System.out.println(state.toString());
+			if (pauser) {
+				pause();
+			}
+			gameOver = psm.isTerminal(state);
+			//Move move1 = psm.getMoveFromTerm(sean.selectMove(System.currentTimeMillis() + 10000));
+			//Move move2 = psm.getMoveFromTerm(charles.selectMove(System.currentTimeMillis() + 10000));
+
+			List<GdlTerm> moves = new ArrayList<GdlTerm>();
+			moves.add(move1);
+			moves.add(move2);
+			theMatch.appendMoves(moves);
+		}
 		//System.out.println(move.toString());
 	}
 
@@ -187,7 +219,7 @@ public class TestingConsole {
 
 	public void pause() {
 		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
-		System.out.println("Enter game file");
+		System.out.println("[PAUSED]");
 		try {
 			String gameFile = in.readLine();
 		} catch (IOException e) {

@@ -43,7 +43,9 @@ public class ProverStateMachine extends StateMachine
 		prover = new AimaProver(description);
 		roles = Role.computeRoles(description);
 		initialState = computeInitialState();
+		setSeed(System.currentTimeMillis());
 	}
+
 
 	private MachineState computeInitialState()
 	{

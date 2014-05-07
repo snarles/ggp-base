@@ -14,7 +14,7 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class MCTSGamer extends GrimgauntPredatorGamer {
-	int diaglevel = 10;
+	int diaglevel = 7;
 	protected static long Start = 0;
 	protected static long MaxTime = 0;
 	String name = "MCTS Gamer";
@@ -55,10 +55,10 @@ public class MCTSGamer extends GrimgauntPredatorGamer {
 
 
 	public class TreeNode {
-
 	    private MachineState state;
 	    private Move move;
 	    private boolean isMaxState;
+	    public long id;
 
 	    ArrayList<TreeNode> children;
 	    double visits, utility, nodeValue, worstChild;
@@ -71,6 +71,7 @@ public class MCTSGamer extends GrimgauntPredatorGamer {
 	    	this.parent = parent;
 	    	this.visits = 0;
 	    	this.utility = 0;
+	    	this.id = System.currentTimeMillis();
 	    }
 
 	    public Move getMove() throws MoveDefinitionException, TransitionDefinitionException, GoalDefinitionException {
@@ -78,11 +79,24 @@ public class MCTSGamer extends GrimgauntPredatorGamer {
 	        while (!timeout()) {
 	        	System.out.printf("Sel-");
 		    	TreeNode cur = this;
+	        	int count = 0;
 		        while (!cur.isLeaf()) {
+		        	count++;
+		        	if (count > 5) {
+		        		printd("while!curisleaf ",cur.toString(),3);
+		        		for (TreeNode child : cur.children) {
+		        			printd("child",child.toString(),3);
+		        		}
+		        		pausd(8);
+		        	}
 		            cur = cur.select();
 		        }
 		        System.out.printf("Exp-");
-		        cur.expand();
+		        Move oneMove = cur.expand();
+		        if (oneMove != null) {
+		        	System.out.println("\n Only one move.");
+		        	return oneMove;
+		        }
 		        System.out.printf("Sim-");
 		        cur = cur.select();
 		        double score = cur.simulate();
@@ -92,7 +106,7 @@ public class MCTSGamer extends GrimgauntPredatorGamer {
 	        System.out.println("\nMCTS Finished, beginning move decision.");
 
 	        Move bestMove = null;
-	        double bestScore = 0;
+	        double bestScore = -1;
 	        for (TreeNode child : this.children) {
 	        	if (panic()) break;
 	        	double newScore = child.utility;
@@ -103,7 +117,7 @@ public class MCTSGamer extends GrimgauntPredatorGamer {
 	        		bestMove = child.move;
 	        	}
 	        }
-	        pausd(5);
+	        pausd(8);
 	        System.out.println("Move Decided. Returning.");
 	        System.out.println(bestMove.toString());
 	        return bestMove;
@@ -117,9 +131,9 @@ public class MCTSGamer extends GrimgauntPredatorGamer {
 	    		printd("Anychild","",11);
 	    		if (child.visits == 0) return child;
 	    	}
-	    	double score = 0;
+	    	double score = -1;
 	    	TreeNode result = this;
-	    	printd("Forchild","",2);
+	    	printd("Forchild ",String.valueOf(this.children.size()),2);
 	    	for (TreeNode child: this.children) {
 	    		printd("Anychild","",2);
 	    		double newScore = UCT(child);
@@ -135,10 +149,13 @@ public class MCTSGamer extends GrimgauntPredatorGamer {
 	    	return node.utility+Math.sqrt(2*Math.log(this.visits)/node.visits);
 	    }
 
-	    public void expand() throws MoveDefinitionException, TransitionDefinitionException {
+	    public Move expand() throws MoveDefinitionException, TransitionDefinitionException {
 	    	//boolean nextMaxType = !(this.isMaxState);
 	    	this.children = new ArrayList<TreeNode>();
 	    	List<Move> moves = getStateMachine().getLegalMoves(getCurrentState(), getRole());
+	    	if (moves.size() == 1){
+	    		return moves.get(0);
+	    	}
 	    	for (Move m : moves) {
 	    		printd("Considering move ",m.toString(),4);
 	    		for (List<Move> jointMove : getStateMachine().getLegalJointMoves(state,	getRole(), m)) {
@@ -156,6 +173,7 @@ public class MCTSGamer extends GrimgauntPredatorGamer {
 	    		}
 
 	    	}
+	    	return null;
 	    }
 
 	    public double simulate() throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
@@ -167,7 +185,14 @@ public class MCTSGamer extends GrimgauntPredatorGamer {
 	    	if (getStateMachine().isTerminal(finalState))  System.out.println("TERMINAL FOUND");
 	    	printd("Done simulating state: ",finalState.toString(),3);
 	    	//pausd(5);
-	    	return sm.getGoal(finalState, getRole());
+	    	double ans = 0;
+	    	try {
+	    		ans = sm.getGoal(finalState, getRole());
+	    	}
+	    	catch (GoalDefinitionException g) {
+	    		printd("Goadl definition exception",finalState.toString(),1);
+	    	}
+	    	return ans;
 	    }
 
 	    public void propagate(TreeNode n, double score) {
@@ -187,6 +212,11 @@ public class MCTSGamer extends GrimgauntPredatorGamer {
 
 	    public int arity() {
 	        return children == null ? 0 : children.size();
+	    }
+
+	    @Override
+		public String toString() {
+	    	return String.valueOf(id);
 	    }
 
 	    // diagnostic print, prints depending on the level of diagnostics needed
