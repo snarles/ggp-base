@@ -27,9 +27,6 @@ public class MCSGamer extends GrimgauntPredatorGamer {
 		if (moves.size() > 1) {
     		int[] moveTotalPoints = new int[moves.size()];
     		int[] moveTotalAttempts = new int[moves.size()];
-
-    		// Perform depth charges for each candidate move, and keep track
-    		// of the total score and total attempts accumulated for each move.
     		for (int i = 0; true; i = (i+1) % moves.size()) {
     		    if (System.currentTimeMillis() > finishBy)
     		        break;
@@ -39,13 +36,10 @@ public class MCSGamer extends GrimgauntPredatorGamer {
     		    moveTotalAttempts[i] += 1;
     		}
 
-    		// Compute the expected score for each move.
     		double[] moveExpectedPoints = new double[moves.size()];
     		for (int i = 0; i < moves.size(); i++) {
     		    moveExpectedPoints[i] = (double)moveTotalPoints[i] / moveTotalAttempts[i];
     		}
-
-    		// Find the move with the best expected score.
     		int bestMove = 0;
     		double bestMoveScore = moveExpectedPoints[0];
     		for (int i = 1; i < moves.size(); i++) {
