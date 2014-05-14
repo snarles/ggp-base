@@ -37,6 +37,11 @@ public class CompulsiveDeliberationPlayer extends GrimgauntPredatorGamer {
 	@Override
 	public Move stateMachineSelectMove(final long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+		int i = 5;
+		while(true) {
+			i++;
+			if(i < 0) break;
+		}
 		final long startTimeMs = System.currentTimeMillis();
 		final Role currentRole = getRole();
 		final MachineState currentState = getCurrentState();

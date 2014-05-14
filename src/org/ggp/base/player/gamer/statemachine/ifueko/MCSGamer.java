@@ -10,11 +10,27 @@ import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
+
 public class MCSGamer extends GrimgauntPredatorGamer {
 
-	/**
-	 * Employs a simple sample "Monte Carlo" algorithm.
-	 */
+	int[] moveTotalPoints;
+	int[] moveTotalAttempts;
+
+	class DepthChargeWorker extends Thread {
+		int mvIdx;
+		DepthChargeWorker(int moveIdx) {
+			super();
+			mvIdx = moveIdx;
+		}
+
+		void runDepthCharge(Move move) {
+			int theScore = performDepthChargeFromMove(getCurrentState(), move);
+		    moveTotalPoints[mvIdx] += theScore;
+		    moveTotalAttempts[mvIdx] += 1;
+		}
+
+	}
+
 	@Override
 	public Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
@@ -27,15 +43,18 @@ public class MCSGamer extends GrimgauntPredatorGamer {
 		if (moves.size() > 1) {
     		int[] moveTotalPoints = new int[moves.size()];
     		int[] moveTotalAttempts = new int[moves.size()];
+    		//init countdown latch
     		for (int i = 0; true; i = (i+1) % moves.size()) {
     		    if (System.currentTimeMillis() > finishBy)
     		        break;
+    		    //initialize workers
 
     		    int theScore = performDepthChargeFromMove(getCurrentState(), moves.get(i));
     		    moveTotalPoints[i] += theScore;
     		    moveTotalAttempts[i] += 1;
-    		}
 
+    		}
+    		//wait for latch while time is okay. then move on
     		double[] moveExpectedPoints = new double[moves.size()];
     		for (int i = 0; i < moves.size(); i++) {
     		    moveExpectedPoints[i] = (double)moveTotalPoints[i] / moveTotalAttempts[i];
