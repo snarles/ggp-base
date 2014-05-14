@@ -29,6 +29,10 @@ public class MCTSGamer extends GrimgauntPredatorGamer {
 		return (System.currentTimeMillis() - Start > (MaxTime - 300));
 	}
 
+	private long playclock() {
+		return (System.currentTimeMillis()-Start);
+	}
+
 	// ==============
 	// MOVE SELECTION
 	// ==============
@@ -70,11 +74,13 @@ public class MCTSGamer extends GrimgauntPredatorGamer {
 	        	System.out.printf("Sel-");
 		    	TreeNode cur = this;
 		        while (!cur.isLeaf()) {
+		        	System.out.printf("-");
 		            cur = cur.select();
 		        }
 		        System.out.printf("Exp-");
 		        cur.expand();
 		        System.out.printf("Sim-");
+		        System.out.println(cur);
 		        cur = cur.select();
 		        double score = cur.simulate();
 		        System.out.printf("Prop ");
@@ -163,6 +169,10 @@ public class MCTSGamer extends GrimgauntPredatorGamer {
 	    public int arity() {
 	        return children == null ? 0 : children.size();
 	    }
+	}
+
+	public class SubNode {
+
 	}
 
 }
