@@ -95,7 +95,7 @@ public class MCTSmk2 extends GrimgauntPredatorGamer {
 		}
 
 		public MaxNode select() {
-			if(this.visits == 0) return this;
+			if(this.visits == 0 || getStateMachine().isTerminal(this.state)) return this;
 			for (MinNode child : this.children) {
 				if(child.visits == 0) return child.select();
 			}
@@ -112,12 +112,14 @@ public class MCTSmk2 extends GrimgauntPredatorGamer {
 		}
 
 		public void expand() throws MoveDefinitionException, TransitionDefinitionException {
-			this.children = new ArrayList<MinNode>();
-			List<Move> moves = getStateMachine().getLegalMoves(this.state, getRole());
-			for (Move move : moves) {
-				MinNode child = new MinNode(move, this);
-				this.children.add(child);
-				child.expand(this.state);
+			if(!getStateMachine().isTerminal(this.state)) {
+				this.children = new ArrayList<MinNode>();
+				List<Move> moves = getStateMachine().getLegalMoves(this.state, getRole());
+				for (Move move : moves) {
+					MinNode child = new MinNode(move, this);
+					this.children.add(child);
+					child.expand(this.state);
+				}
 			}
 
 		}
