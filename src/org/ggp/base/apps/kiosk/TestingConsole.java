@@ -17,6 +17,7 @@ import org.ggp.base.player.gamer.statemachine.sample.SampleMonteCarloGamer;
 import org.ggp.base.util.game.Game;
 import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.gdl.grammar.GdlConstant;
+import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.gdl.grammar.GdlTerm;
 import org.ggp.base.util.match.Match;
 import org.ggp.base.util.propnet.architecture.Component;
@@ -72,6 +73,7 @@ public class TestingConsole {
 		Game theGame = Game.createEphemeralGame(content2);
 		List<Gdl> theRules = theGame.getRules();
 		psm.initialize(theRules);
+		psm.setSeed(0);
 		lsm.initialize(theRules);
 		pn = ((LightPropNetMachine) lsm).getPropNet();
 //		PropNetAnnotatedFlattener af = new PropNetAnnotatedFlattener(theRules);
@@ -95,19 +97,19 @@ public class TestingConsole {
 //			e.printStackTrace();
 //		}
 		//paused(1);
-		printComponents();paused(1);
-		try {
-			randomAdvance();
-		} catch (TransitionDefinitionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (MoveDefinitionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		printd("State:",currentState.toString(),3);
+		//printComponents();paused(1);
+		randomAdvance();
+
 		//((LightPropNetMachine) lsm).setState(currentState);
-		((LightPropNetMachine) lsm).goToInitial();
+
+		paused(1);
+		randomAdvance();
+
+		paused(1);
+		randomAdvance();
+
+		paused(1);
+		randomAdvance();
 
 //		List<List<Move>> moves = null;
 //		try {
@@ -267,29 +269,53 @@ public class TestingConsole {
 
 
 	// chooses a legal joint move at random and advances the game
-	public void randomAdvance() throws TransitionDefinitionException, MoveDefinitionException {
-		long start; long elapsed; String message;
-		List<Move> selectedMove;
-		List<List<Move>> legals;
-		if (currentTurn == -1) {
-			currentTurn++;
-			start = System.currentTimeMillis();
-			currentState = psm.getInitialState();
-			elapsed = System.currentTimeMillis()-start;
-			message = "Time to get initial state: ";
-			message = message.concat(String.valueOf(elapsed));
-			if (messageEachTurn) {
-				System.out.println(message);
+	public void randomAdvance()  {
+		try {
+			long start; long elapsed; String message;
+			List<Move> selectedMove;
+			List<List<Move>> legals;
+			if (currentTurn == -1) {
+				currentTurn++;
+				start = System.currentTimeMillis();
+				currentState = psm.getInitialState();
+				((LightPropNetMachine) lsm).goToInitial();
+				elapsed = System.currentTimeMillis()-start;
+				message = "Time to get initial state: ";
+				message = message.concat(String.valueOf(elapsed));
+				if (messageEachTurn) {
+					System.out.println(message);
+				}
+				printd("State:",currentState.toString(),3);
+			}
+			else {
+				currentTurn++;
+				if (messageEachTurn) {
+					System.out.println("Turn: ".concat(String.valueOf(currentTurn)));
+				}
+				legals = getMoves();
+				selectedMove = legals.get(new Random().nextInt(legals.size()));
+				for (Move m : selectedMove) {
+					printd("Move:",m.toString(),3);
+				}
+				((LightPropNetMachine) lsm).updateCurrent(selectedMove);
+				System.out.println(selectedMove.toString());
+				for (Move m : selectedMove) {
+					printd("Move:",m.toString(),3);
+				}
+				currentState = getNextState(selectedMove);
+				printd("State:",currentState.toString(),3);
+				Set<GdlSentence> contents1 = currentState.getContents();
+				Set<GdlSentence> contents2 = ((LightPropNetMachine) lsm).getCurrentState().getContents();
+				if (contents1.equals(contents2)) {
+					printd("!!MATCH!!","",3);
+				}
+				else {
+					printd("MISMATCH!!!","",0);
+				}
 			}
 		}
-		else {
-			currentTurn++;
-			if (messageEachTurn) {
-				System.out.println("Turn: ".concat(String.valueOf(currentTurn)));
-			}
-			legals = getMoves();
-			selectedMove = legals.get(new Random().nextInt(legals.size()));
-			currentState = getNextState(selectedMove);
+		catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 

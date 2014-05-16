@@ -47,6 +47,7 @@ public class LightPropNetMachine extends StateMachine {
     private Set<Integer> deltaTrans = null;
     private boolean resolved = false;
     private MachineState currentState = null;
+    private Set<Integer> oldInputs = null;
     /**
      * Initializes the PropNetStateMachine. You should compute the topological
      * ordering here. Additionally you may compute the initial state here, at
@@ -64,9 +65,10 @@ public class LightPropNetMachine extends StateMachine {
         propNet.labelComponents();
         roles = propNet.getRoles();
         netState = new boolean[propNet.getSize()];
+        oldInputs = new HashSet<Integer>();
     }
 
-    public void cloneInitialize(List<Role> rs, PropNet pn, boolean[] ns, PriorityQueue<Integer> ds, Set<Integer> dt, boolean res, MachineState ms) {
+    public void cloneInitialize(List<Role> rs, PropNet pn, boolean[] ns, PriorityQueue<Integer> ds, Set<Integer> dt, boolean res, MachineState ms, Set<Integer> oi) {
     	roles = rs;
     	propNet = pn;
     	netState = Arrays.copyOf(ns,pn.getSize());
@@ -74,12 +76,13 @@ public class LightPropNetMachine extends StateMachine {
     	deltaTrans = new HashSet<Integer>(dt);
     	resolved = res;
     	currentState = ms;
+    	oldInputs = new HashSet<Integer>(oi);
     }
 
     @Override
 	public LightPropNetMachine clone() {
     	LightPropNetMachine newb = new LightPropNetMachine();
-    	newb.cloneInitialize(roles,propNet,netState,deltaState,deltaTrans,resolved,currentState);
+    	newb.cloneInitialize(roles,propNet,netState,deltaState,deltaTrans,resolved,currentState,oldInputs);
     	return newb;
     }
 
@@ -124,15 +127,23 @@ public class LightPropNetMachine extends StateMachine {
 
 	public void goToInitial() {
 		netState = new boolean[propNet.getSize()];
+
 		deltaState = new PriorityQueue<Integer>();
-		deltaState.add(new Integer(propNet.getInitProposition().getId()));
+		Integer i0 = new Integer(propNet.getInitProposition().getId());
+		deltaState.add(i0);
+		netState[i0.intValue()] = true;
 		resolved = false;
 		resolve();
 		goToNext();
-		netState[propNet.getInitProposition().getId()] = false;
-		deltaState.add(new Integer(propNet.getInitProposition().getId()));
-		printNetState();
+		netState[i0.intValue()] = false;
+		deltaState.add(i0);
+		//printNetState();
+		if (diagnosticMode) {
+			printCurrentState();
+		}
 	}
+
+
 
 	public void setState(MachineState state) {
 		currentState = state;
@@ -156,7 +167,7 @@ public class LightPropNetMachine extends StateMachine {
 			boolean oldS = netState[i];
 			Component c = propNet.findComponent(i);
 			if (c.getLevel() == 0) {
-				currentS = !netState[i];
+				currentS = netState[i];
 			}
 			else {
 				Set<Integer> inputs = c.getInputIds();
@@ -185,18 +196,32 @@ public class LightPropNetMachine extends StateMachine {
 					}
 				}
 			}
-			if (currentS != oldS) {
-				printd("Delta:",c.toString2());
+			if ((currentS != oldS) || c.getLevel()==0) {
+				String s = c.toString2();
+				s = s.concat(" from ");
+				s= s.concat(String.valueOf(oldS));
+				s = s.concat(" to ");
+				s= s.concat(String.valueOf(currentS));
+				printd("Delta:",s);
 				netState[i] = currentS;
 				Set<Integer> outputs = c.getOutputIds();
 				if (! (c instanceof Transition)) {
 					for (Integer i1 : outputs) {
-						printd("  ->delta:",i1.toString());
 						if (! deltaState.contains(i1)) {
 							deltaState.add(i1);
 						}
 					}
 				}
+				//printNetState();
+				if (diagnosticMode) {
+					printd("Delta:",s);
+					if (! (c instanceof Transition)) {
+						for (Integer i1 : outputs) {
+							printd("  ->delta:",i1.toString());
+						}
+					}
+				}
+				//paused();
 			}
 		}
 		resolved = true;
@@ -245,7 +270,64 @@ public class LightPropNetMachine extends StateMachine {
 		return null;
 	}
 
+	//updates current state with moves
+	public void updateCurrent(List<Move> moves) {
+		List<GdlSentence> dodos = toDoes(moves);
+		Map<GdlSentence,Proposition> inputMap = propNet.getInputPropositions();
+		Set<Integer> newInputs = new HashSet();
+		for (GdlSentence g : dodos) {
+			Proposition p = inputMap.get(g);
+			newInputs.add(new Integer(p.getId()));
+		}
+		for (Integer i : oldInputs) {
+			netState[i.intValue()] = false;
+		}
+		for (Integer i : newInputs) {
+			netState[i.intValue()] = true;
+		}
+		Set<Integer> ups = symmDiff(newInputs,oldInputs);
+		updateNetState(ups);
+		if (diagnosticMode) {
+			printCurrentState();
+		}
+		oldInputs = newInputs;
+	}
 
+	public void printCurrentState() {
+		currentState = getStateFromBase();
+		printd("PropNetState:",currentState.toString());
+	}
+
+	public MachineState getCurrentState() {
+		currentState = getStateFromBase();
+		return currentState;
+	}
+
+	public Set<Integer> symmDiff(Set<Integer> s1, Set<Integer> s2) {
+		Set<Integer> ans = new HashSet();
+		for (Integer i : s1) {
+			if (! s2.contains(i)) {
+				ans.add(i);
+			}
+		}
+		for (Integer i : s2) {
+			if (! s1.contains(i)) {
+				ans.add(i);
+			}
+		}
+		return ans;
+	}
+
+	// updates the current net state after adding new ints to deltaState
+	public void updateNetState(Set<Integer> ups) {
+		for (Integer i : ups) {
+			deltaState.add(i);
+		}
+		resolve();
+		goToNext();
+		//printNetState();
+
+	}
 
 	/* Already implemented for you */
 	@Override
@@ -312,8 +394,8 @@ public class LightPropNetMachine extends StateMachine {
 		Set<GdlSentence> contents = new HashSet<GdlSentence>();
 		for (Proposition p : propNet.getBasePropositions().values())
 		{
-			p.setValue(p.getSingleInput().getValue());
-			if (p.getValue())
+			int i = p.getId();
+			if (netState[i])
 			{
 				contents.add(p.getName());
 			}
@@ -371,5 +453,4 @@ public class LightPropNetMachine extends StateMachine {
 			System.out.println(s.concat(t));
 		}
 	}
-
 }
