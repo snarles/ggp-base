@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
@@ -96,23 +95,30 @@ public class TestingConsole {
 //			e.printStackTrace();
 //		}
 		//paused(1);
-		//printComponents();
-		Map<Integer,Set<Component>> sorted = pn.getSorted();
-		for (Integer i : sorted.keySet()) {
-			printd("key:",i.toString(),3);
-			for (Component c : sorted.get(i)) {
-				printd(" val:",c.toString3(),3);
-			}
-		}
-		List<List<Move>> moves = null;
+		printComponents();paused(1);
 		try {
 			randomAdvance();
-			randomAdvance();
-			moves = getMoves();
+		} catch (TransitionDefinitionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (MoveDefinitionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		catch (Exception e) {
-			printd("ERROR","",0);
-		}
+		printd("State:",currentState.toString(),3);
+		//((LightPropNetMachine) lsm).setState(currentState);
+		((LightPropNetMachine) lsm).goToInitial();
+
+//		List<List<Move>> moves = null;
+//		try {
+//			randomAdvance();
+//			randomAdvance();
+//			moves = getMoves();
+//		}
+//		catch (Exception e) {
+//			printd("ERROR","",0);
+//		}
+//
 		//Component c = pn.getInitProposition();
 		//printd("ip:",c.toString3(),3);
 

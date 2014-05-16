@@ -103,6 +103,11 @@ public final class PropNet
 
 	private Map<Integer, Set<Component>> sorted;
 
+	private Map<Integer, Set<Integer>> outputMatrix;
+	private Map<Integer, Set<Integer>> inputMatrix;
+	private Map<Integer, Set<Integer>> transitionMatrix;
+
+
 	public void addComponent(Component c)
 	{
 		components.add(c);
@@ -583,7 +588,7 @@ public final class PropNet
 		Collections.sort(componentsS);
 		sorted = new HashMap<Integer, Set<Component>>();
 		HashSet currentSet = new HashSet<Component>();
-		int count = 0;
+		int count = -1;
 		int maxlv = 0;
 		for (Component c : componentsS) {
 			count++;
@@ -596,7 +601,20 @@ public final class PropNet
 			currentSet.add(c);
 		}
 		sorted.put(new Integer(maxlv),currentSet);
+		inputMatrix = new HashMap<Integer, Set<Integer>>();
+		outputMatrix = new HashMap<Integer, Set<Integer>>();
+		transitionMatrix = new HashMap<Integer, Set<Integer>>();
 
+		for (Component c : componentsS) {
+			count++;
+			inputMatrix.put(new Integer(c.getId()), c.getInputIds());
+			if (c instanceof Transition) {
+				transitionMatrix.put(new Integer(c.getId()),c.getOutputIds());
+			}
+			else {
+				outputMatrix.put(new Integer(c.getId()), c.getOutputIds());
+			}
+		}
 		for (GdlSentence g : basePropositions.keySet()) {
 			basePropositions.get(g).setSp("BASE");
 		}
@@ -624,9 +642,20 @@ public final class PropNet
 		return basePropositions.get(g);
 	}
 	public Component findComponent(int i) {
-		return componentsS.get(i-1);
+		return componentsS.get(i);
 	}
 	public Map<Integer,Set<Component>> getSorted() {
 		return sorted;
 	}
+	public Map<Integer,Set<Integer>> getInputMatrix() {
+		return inputMatrix;
+	}
+	public Map<Integer,Set<Integer>> getOutputMatrix() {
+		return outputMatrix;
+	}
+	public Map<Integer,Set<Integer>> getTransitionMatrix() {
+		return transitionMatrix;
+	}
+
+
 }

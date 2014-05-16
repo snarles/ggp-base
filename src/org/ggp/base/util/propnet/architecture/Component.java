@@ -208,4 +208,21 @@ public abstract class Component implements Serializable, Comparable<Component>
     	return level-c.getLevel();
     }
 
+    public Set<Integer> getOutputIds() {
+    	Set<Integer> ans = new HashSet();
+    	for (Component c : outputs) {
+    		ans.add(new Integer(c.getId()));
+    	}
+    	return ans;
+    }
+    public Set<Integer> getInputIds() {
+    	Set<Integer> ans = new HashSet();
+    	for (Component c : inputs) {
+    		ans.add(new Integer(c.getId()));
+    	}
+    	return ans;
+    }
+
+
+
 }
