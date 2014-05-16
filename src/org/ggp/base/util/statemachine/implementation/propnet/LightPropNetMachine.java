@@ -1,8 +1,8 @@
 package org.ggp.base.util.statemachine.implementation.propnet;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -11,7 +11,6 @@ import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.gdl.grammar.GdlConstant;
 import org.ggp.base.util.gdl.grammar.GdlRelation;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
-import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.PropNet;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.propnet.factory.OptimizingPropNetFactory;
@@ -30,10 +29,13 @@ public class LightPropNetMachine extends StateMachine {
     /** The underlying proposition network  */
     private PropNet propNet;
     /** The topological ordering of the propositions */
-    private List<Proposition> ordering;
+    //private List<Proposition> ordering;
     /** The player roles */
     private List<Role> roles;
-
+    private boolean[] netState = null;
+    private boolean[] deltaState = null;
+    private boolean resolved = false;
+    private MachineState currentState = null;
     /**
      * Initializes the PropNetStateMachine. You should compute the topological
      * ordering here. Additionally you may compute the initial state here, at
@@ -41,9 +43,32 @@ public class LightPropNetMachine extends StateMachine {
      */
     @Override
     public void initialize(List<Gdl> description) {
-        propNet = OptimizingPropNetFactory.create(description);
+        try {
+			propNet = OptimizingPropNetFactory.create(description, false);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        propNet.topoSort();
+        propNet.labelComponents();
         roles = propNet.getRoles();
-        ordering = getOrdering();
+        netState = new boolean[propNet.getSize()];
+    }
+
+    public void cloneInitialize(List<Role> rs, PropNet pn, boolean[] ns, boolean[] ds, boolean res, MachineState ms) {
+    	roles = rs;
+    	propNet = pn;
+    	netState = Arrays.copyOf(ns,pn.getSize());
+    	deltaState = Arrays.copyOf(ds,pn.getSize());
+    	resolved = res;
+    	currentState = ms;
+    }
+
+    @Override
+	public LightPropNetMachine clone() {
+    	LightPropNetMachine newb = new LightPropNetMachine();
+    	newb.cloneInitialize(roles,propNet,netState,deltaState,resolved,currentState);
+    	return newb;
     }
 
 	/**
@@ -78,9 +103,23 @@ public class LightPropNetMachine extends StateMachine {
 	@Override
 	public MachineState getInitialState() {
 		// TODO: Compute the initial state.
+		goToInitial();
 		return null;
 	}
 
+	public void goToInitial() {
+		netState = new boolean[propNet.getSize()];
+		deltaState = new boolean[propNet.getSize()];
+		deltaState[propNet.getInitProposition().getId()-1] = true;
+		resolved = false;
+		resolve();
+	}
+
+	// Given updates loaded in deltaState, propagates changes forward
+	public void resolve()
+	{
+
+	}
 	/**
 	 * Computes the legal moves for role in state.
 	 */
@@ -101,35 +140,7 @@ public class LightPropNetMachine extends StateMachine {
 		return null;
 	}
 
-	/**
-	 * This should compute the topological ordering of propositions.
-	 * Each component is either a proposition, logical gate, or transition.
-	 * Logical gates and transitions only have propositions as inputs.
-	 *
-	 * The base propositions and input propositions should always be exempt
-	 * from this ordering.
-	 *
-	 * The base propositions values are set from the MachineState that
-	 * operations are performed on and the input propositions are set from
-	 * the Moves that operations are performed on as well (if any).
-	 *
-	 * @return The order in which the truth values of propositions need to be set.
-	 */
-	public List<Proposition> getOrdering()
-	{
-	    // List to contain the topological ordering.
-	    List<Proposition> order = new LinkedList<Proposition>();
 
-		// All of the components in the PropNet
-		List<Component> components = new ArrayList<Component>(propNet.getComponents());
-
-		// All of the propositions in the PropNet.
-		List<Proposition> propositions = new ArrayList<Proposition>(propNet.getPropositions());
-
-	    // TODO: Compute the topological ordering.
-
-		return order;
-	}
 
 	/* Already implemented for you */
 	@Override
@@ -209,5 +220,9 @@ public class LightPropNetMachine extends StateMachine {
 	public PropNet getPropNet()
 	{
 		return propNet;
+	}
+
+	public boolean[] getNetState() {
+		return netState;
 	}
 }

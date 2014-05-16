@@ -101,6 +101,8 @@ public final class PropNet
 	/** A helper list of all of the roles. */
 	private final List<Role> roles;
 
+	private Map<Integer, Set<Component>> sorted;
+
 	public void addComponent(Component c)
 	{
 		components.add(c);
@@ -573,16 +575,28 @@ public final class PropNet
 			}
 			if (alldone) { flag = false; }
 		}
+
 	}
 	public void labelComponents()
 	{
 		componentsS = new ArrayList<Component>(components);
 		Collections.sort(componentsS);
+		sorted = new HashMap<Integer, Set<Component>>();
+		HashSet currentSet = new HashSet<Component>();
 		int count = 0;
+		int maxlv = 0;
 		for (Component c : componentsS) {
 			count++;
 			c.setId(count);
+			if (c.getLevel() > maxlv) {
+				sorted.put(new Integer(maxlv),currentSet);
+				maxlv++;
+				currentSet = new HashSet<Component>();
+			}
+			currentSet.add(c);
 		}
+		sorted.put(new Integer(maxlv),currentSet);
+
 		for (GdlSentence g : basePropositions.keySet()) {
 			basePropositions.get(g).setSp("BASE");
 		}
@@ -611,5 +625,8 @@ public final class PropNet
 	}
 	public Component findComponent(int i) {
 		return componentsS.get(i-1);
+	}
+	public Map<Integer,Set<Component>> getSorted() {
+		return sorted;
 	}
 }

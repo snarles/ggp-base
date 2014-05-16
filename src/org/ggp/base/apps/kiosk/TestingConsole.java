@@ -6,7 +6,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -19,19 +18,17 @@ import org.ggp.base.player.gamer.statemachine.sample.SampleMonteCarloGamer;
 import org.ggp.base.util.game.Game;
 import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.gdl.grammar.GdlConstant;
-import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.gdl.grammar.GdlTerm;
 import org.ggp.base.util.match.Match;
 import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.PropNet;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
-import org.ggp.base.util.propnet.factory.OptimizingPropNetFactory;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
-import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
+import org.ggp.base.util.statemachine.implementation.propnet.LightPropNetMachine;
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 
@@ -50,6 +47,7 @@ public class TestingConsole {
 
 	String gameFile = dir.concat(gamef);
 	StateMachine psm = new ProverStateMachine();
+	StateMachine lsm = new LightPropNetMachine();
 	MachineState currentState;
 	int currentTurn = -1;
 	boolean messageEachTurn = true;
@@ -75,8 +73,8 @@ public class TestingConsole {
 		Game theGame = Game.createEphemeralGame(content2);
 		List<Gdl> theRules = theGame.getRules();
 		psm.initialize(theRules);
-
-
+		lsm.initialize(theRules);
+		pn = ((LightPropNetMachine) lsm).getPropNet();
 //		PropNetAnnotatedFlattener af = new PropNetAnnotatedFlattener(theRules);
 //		long start = System.currentTimeMillis();
 //		List<GdlRule> flatDescription = af.flatten();
@@ -90,22 +88,22 @@ public class TestingConsole {
 		}
 		**/
 		//paused(1);
-		OptimizingPropNetFactory op = new OptimizingPropNetFactory();
-		try {
-			pn = op.create(theRules,false);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		long start = System.currentTimeMillis();
-		pn.topoSort();
-		long elapsed = System.currentTimeMillis()-start;
-		printd("Time to sort",String.valueOf(elapsed),3);
-		pn.labelComponents();
+//		OptimizingPropNetFactory op = new OptimizingPropNetFactory();
+//		try {
+//			pn = op.create(theRules,false);
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 		//paused(1);
 		//printComponents();
-		//paused(1);
-		//printPropositions();
+		Map<Integer,Set<Component>> sorted = pn.getSorted();
+		for (Integer i : sorted.keySet()) {
+			printd("key:",i.toString(),3);
+			for (Component c : sorted.get(i)) {
+				printd(" val:",c.toString3(),3);
+			}
+		}
 		List<List<Move>> moves = null;
 		try {
 			randomAdvance();
@@ -115,45 +113,8 @@ public class TestingConsole {
 		catch (Exception e) {
 			printd("ERROR","",0);
 		}
-		Set<GdlSentence> contents = currentState.getContents();
-		for (GdlSentence g : contents) {
-			printd("g:",g.toString(),3);
-			printd("p:",pn.getProposition(g).toString3(),3);
-		}
-		List<Move> l1 = moves.get(0);
-		for (Move m : l1) {
-			printd("m:",m.toString(),3);
-			GdlTerm g = m.getContents();
-		}
-		//paused(1);
-		//printComponents();
-		Map<GdlSentence,Proposition> ips = pn.getInputPropositions();
-		Set<GdlSentence> ipsk = ips.keySet();
-		Set<GdlTerm> rolesT = new HashSet();
-		for (GdlSentence g : ipsk) {
-			printd("key:",g.toString(),3);
-			List<GdlTerm> b = g.getBody();
-			rolesT.add(b.get(0));
-			for (GdlTerm g2 : b) {
-				printd("val:",g2.toString(),4);
-				for (Move m : l1) {
-					GdlTerm g3 = m.getContents();
-					if (g3.equals(g2)) {
-						printd(" match:",m.toString(),3);
-					}
-				}
-			}
-		}
-		List<Role> roles = psm.getRoles();
-		for (GdlTerm g : rolesT) {
-			printd("role:",g.toString(),3);
-			for (Role r : roles) {
-				GdlConstant t = r.getName();
-				if (t.equals(g)) {
-					printd("match:",r.toString(),3);
-				}
-			}
-		}
+		//Component c = pn.getInitProposition();
+		//printd("ip:",c.toString3(),3);
 
 	}
 

@@ -4,7 +4,6 @@ import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.ggp.base.util.propnet.architecture.components.Constant;
 import org.ggp.base.util.propnet.architecture.components.Transition;
 
 /**
@@ -190,7 +189,8 @@ public abstract class Component implements Serializable, Comparable<Component>
     public boolean topoSort() {
     	int maxl = 0;
     	for (Component c : getInputs()) {
-    		if (! (c instanceof Constant)  && ! (c instanceof Transition)) {
+    		//! (c instanceof Constant)  &&
+    		if (! (c instanceof Transition)) {
 	    		if (maxl < c.getLevel()+1) {
 	    			maxl = c.getLevel()+1;
 	    		}
