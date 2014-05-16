@@ -48,6 +48,9 @@ public final class Constant extends Component
 	{
 		String s = getIdString();
 		s = s.concat("CONS");
+		if (getSp().length() > 0) {
+			s=s.concat("{").concat(getSp()).concat("}");
+		}
 		return s;
 	}
 

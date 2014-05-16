@@ -32,6 +32,8 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 
 public class TestingConsole {
+	int printlimit = 700;
+	int printcount = 0;
 	int diaglevel = 10;
 	//Change this:
 	String dir = "C:/github/ggp-base/games/gamemaster/";
@@ -65,7 +67,7 @@ public class TestingConsole {
 		}
 		//System.out.println(content);
 		String content2 = Game.preprocessRulesheet(content);
-		System.out.println(content2);
+		//System.out.println(content2);
 		Game theGame = Game.createEphemeralGame(content2);
 		List<Gdl> theRules = theGame.getRules();
 		psm.initialize(theRules);
@@ -86,15 +88,15 @@ public class TestingConsole {
 		//paused(1);
 		OptimizingPropNetFactory op = new OptimizingPropNetFactory();
 		try {
-			pn = op.create(theRules,true);
+			pn = op.create(theRules,false);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		pn.labelComponents();
-		paused(1);
+		//paused(1);
 		printComponents();
-		paused(1);
+		//paused(1);
 		//printPropositions();
 	}
 
@@ -280,6 +282,11 @@ public class TestingConsole {
 	}
 	public void printd(String s, String u, int i) {
 		if (i < diaglevel) {
+			printcount++;
+			if (printcount > printlimit) {
+				paused(1);
+				printcount = 0;
+			}
 			System.out.println(s.concat(u));
 		}
 	}

@@ -19,7 +19,8 @@ public abstract class Component implements Serializable
     /** The outputs of the component. */
     private final Set<Component> outputs;
     private int id;
-
+    private final Set<Component> special;
+    private String sp="";
     /**
      * Creates a new Component with no inputs or outputs.
      */
@@ -27,6 +28,7 @@ public abstract class Component implements Serializable
     {
         this.inputs = new HashSet<Component>();
         this.outputs = new HashSet<Component>();
+        this.special = new HashSet<Component>();
     }
 
     /**
@@ -166,6 +168,15 @@ public abstract class Component implements Serializable
     }
     public void setId(int i) {
     	id=i;
+    }
+    public String getSp() {
+    	return sp;
+    }
+    public void setSp(String s) {
+    	sp=s;
+    }
+    public Set<Component> getSpecial() {
+    	return special;
     }
 
 }

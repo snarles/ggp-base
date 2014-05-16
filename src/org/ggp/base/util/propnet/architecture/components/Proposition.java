@@ -85,6 +85,9 @@ public final class Proposition extends Component
 	{
 		String s = getIdString();
 		s =s.concat(name.toString());
+		if (getSp().length() > 0) {
+			s=s.concat("{").concat(getSp()).concat("}");
+		}
 		return s;
 	}
 

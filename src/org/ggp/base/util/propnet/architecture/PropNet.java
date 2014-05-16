@@ -557,5 +557,24 @@ public final class PropNet
 			count++;
 			c.setId(count);
 		}
+		for (GdlSentence g : basePropositions.keySet()) {
+			basePropositions.get(g).setSp("BASE");
+		}
+		for (GdlSentence g : inputPropositions.keySet()) {
+			inputPropositions.get(g).setSp("INPUT");
+		}
+		for (Role r : legalPropositions.keySet()) {
+			for (Component c : legalPropositions.get(r)) {
+				c.setSp("LEGAL ".concat(r.toString()));
+			}
+		}
+		for (Role r : goalPropositions.keySet()) {
+			for (Component c : goalPropositions.get(r)) {
+				c.setSp("GOAL ".concat(r.toString()));
+			}
+		}
+		initProposition.setSp("INITPROP");
+		terminalProposition.setSp("TERMINAL");
+
 	}
 }
