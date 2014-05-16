@@ -549,4 +549,13 @@ public final class PropNet
 		//c.removeAllInputs();
 		//c.removeAllOutputs();
 	}
+	// New methods
+	public void labelComponents()
+	{
+		int count = 0;
+		for (Component c : components) {
+			count++;
+			c.setId(count);
+		}
+	}
 }

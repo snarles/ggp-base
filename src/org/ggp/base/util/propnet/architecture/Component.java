@@ -18,6 +18,7 @@ public abstract class Component implements Serializable
     private final Set<Component> inputs;
     /** The outputs of the component. */
     private final Set<Component> outputs;
+    private int id;
 
     /**
      * Creates a new Component with no inputs or outputs.
@@ -151,6 +152,20 @@ public abstract class Component implements Serializable
         }
 
         return sb.toString();
+    }
+    //New methods
+    public abstract String toString2();
+    public abstract String toString3();
+    public int getId()
+    {
+    	return id;
+    }
+    public String getIdString()
+    {
+    	return "(".concat(String.valueOf(id)).concat(")");
+    }
+    public void setId(int i) {
+    	id=i;
     }
 
 }

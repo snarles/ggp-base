@@ -79,4 +79,28 @@ public final class Proposition extends Component
 	{
 		return toDot("circle", value ? "red" : "white", name.toString());
 	}
+	// New methods
+	@Override
+	public String toString2()
+	{
+		String s = getIdString();
+		s =s.concat(name.toString());
+		return s;
+	}
+
+	@Override
+	public String toString3()
+	{
+		String s = "";
+		s=s.concat(toString2());
+		s=s.concat("   [IN:]");
+		for (Component c : getInputs()) {
+			s=s.concat(c.toString2()).concat(";");
+		}
+		s=s.concat("   [OUT:]");
+		for (Component c : getOutputs()) {
+			s=s.concat(c.toString2()).concat(";");
+		}
+		return s;
+	}
 }

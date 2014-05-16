@@ -34,13 +34,13 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 public class TestingConsole {
 	int diaglevel = 10;
 	//Change this:
-	//String dir = "C:/github/ggp-base/games/gamemaster/";
-	String dir = "/Users/snarles/github/ggp-base/games/gamemaster/";
+	String dir = "C:/github/ggp-base/games/gamemaster/";
+	//String dir = "/Users/snarles/github/ggp-base/games/gamemaster/";
 	//String gamef = "alquerque.kif";
-	String gamef = "connectfour.kif";
+	//String gamef = "connectfour.kif";
 	//String gamef = "pentago.kif";
 	//String gamef = "skirmish.kif";
-
+	String gamef = "tictactoe.kif";
 
 	String gameFile = dir.concat(gamef);
 	StateMachine psm = new ProverStateMachine();
@@ -91,10 +91,11 @@ public class TestingConsole {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		pn.labelComponents();
 		paused(1);
 		printComponents();
 		paused(1);
-		printPropositions();
+		//printPropositions();
 	}
 
 	public void run3() throws IOException, MoveDefinitionException, FileNotFoundException, TransitionDefinitionException, MetaGamingException, MoveSelectionException {
@@ -220,7 +221,7 @@ public class TestingConsole {
 	public void printComponents() {
 		Set<Component> components = pn.getComponents();
 		for (Component c : components) {
-			printd("Component:",c.toString(),2);
+			printd("Component:",c.toString3(),2);
 		}
 	}
 
@@ -229,7 +230,7 @@ public class TestingConsole {
 		int count = 0;
 		for (Proposition p : propositions) {
 			count++;
-			printd("Proposition:",p.toString(),2);
+			printd("Proposition:",p.toString2(),2);
 			if (count > 1000) {
 				count = 0;
 				paused(2);
