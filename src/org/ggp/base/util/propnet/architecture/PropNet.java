@@ -609,4 +609,7 @@ public final class PropNet
 	public Component getProposition(GdlSentence g) {
 		return basePropositions.get(g);
 	}
+	public Component findComponent(int i) {
+		return componentsS.get(i-1);
+	}
 }
