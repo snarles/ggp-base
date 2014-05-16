@@ -3,6 +3,8 @@ package org.ggp.base.util.propnet.architecture;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -70,6 +72,7 @@ public final class PropNet
 {
 	/** References to every component in the PropNet. */
 	private final Set<Component> components;
+	private ArrayList<Component> componentsS;
 
 	/** References to every Proposition in the PropNet. */
 	private final Set<Proposition> propositions;
@@ -549,11 +552,34 @@ public final class PropNet
 		//c.removeAllInputs();
 		//c.removeAllOutputs();
 	}
+
+
+
 	// New methods
+	public void topoSort()
+	{
+		boolean flag = true;
+		Set<Component> active = new HashSet(components);
+		while (flag)
+		{
+			//System.out.println("toposort");
+			boolean alldone = true;
+			boolean res;
+			for (Component c : components) {
+				res = c.topoSort();
+				if (!res) {
+					alldone = false;
+				}
+			}
+			if (alldone) { flag = false; }
+		}
+	}
 	public void labelComponents()
 	{
+		componentsS = new ArrayList<Component>(components);
+		Collections.sort(componentsS);
 		int count = 0;
-		for (Component c : components) {
+		for (Component c : componentsS) {
 			count++;
 			c.setId(count);
 		}
@@ -576,5 +602,11 @@ public final class PropNet
 		initProposition.setSp("INITPROP");
 		terminalProposition.setSp("TERMINAL");
 
+	}
+	public ArrayList<Component> getComponentsS() {
+		return componentsS;
+	}
+	public Component getProposition(GdlSentence g) {
+		return basePropositions.get(g);
 	}
 }

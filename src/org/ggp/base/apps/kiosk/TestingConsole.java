@@ -6,7 +6,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
@@ -17,6 +19,7 @@ import org.ggp.base.player.gamer.statemachine.sample.SampleMonteCarloGamer;
 import org.ggp.base.util.game.Game;
 import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.gdl.grammar.GdlConstant;
+import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.gdl.grammar.GdlTerm;
 import org.ggp.base.util.match.Match;
 import org.ggp.base.util.propnet.architecture.Component;
@@ -25,6 +28,7 @@ import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.propnet.factory.OptimizingPropNetFactory;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
+import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
@@ -93,11 +97,64 @@ public class TestingConsole {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		long start = System.currentTimeMillis();
+		pn.topoSort();
+		long elapsed = System.currentTimeMillis()-start;
+		printd("Time to sort",String.valueOf(elapsed),3);
 		pn.labelComponents();
 		//paused(1);
-		printComponents();
+		//printComponents();
 		//paused(1);
 		//printPropositions();
+		List<List<Move>> moves = null;
+		try {
+			randomAdvance();
+			randomAdvance();
+			moves = getMoves();
+		}
+		catch (Exception e) {
+			printd("ERROR","",0);
+		}
+		Set<GdlSentence> contents = currentState.getContents();
+		for (GdlSentence g : contents) {
+			printd("g:",g.toString(),3);
+			printd("p:",pn.getProposition(g).toString3(),3);
+		}
+		List<Move> l1 = moves.get(0);
+		for (Move m : l1) {
+			printd("m:",m.toString(),3);
+			GdlTerm g = m.getContents();
+		}
+		//paused(1);
+		//printComponents();
+		Map<GdlSentence,Proposition> ips = pn.getInputPropositions();
+		Set<GdlSentence> ipsk = ips.keySet();
+		Set<GdlTerm> rolesT = new HashSet();
+		for (GdlSentence g : ipsk) {
+			printd("key:",g.toString(),3);
+			List<GdlTerm> b = g.getBody();
+			rolesT.add(b.get(0));
+			for (GdlTerm g2 : b) {
+				printd("val:",g2.toString(),4);
+				for (Move m : l1) {
+					GdlTerm g3 = m.getContents();
+					if (g3.equals(g2)) {
+						printd(" match:",m.toString(),3);
+					}
+				}
+			}
+		}
+		List<Role> roles = psm.getRoles();
+		for (GdlTerm g : rolesT) {
+			printd("role:",g.toString(),3);
+			for (Role r : roles) {
+				GdlConstant t = r.getName();
+				if (t.equals(g)) {
+					printd("match:",r.toString(),3);
+				}
+			}
+		}
+
 	}
 
 	public void run3() throws IOException, MoveDefinitionException, FileNotFoundException, TransitionDefinitionException, MetaGamingException, MoveSelectionException {
@@ -221,7 +278,7 @@ public class TestingConsole {
 
 
 	public void printComponents() {
-		Set<Component> components = pn.getComponents();
+		ArrayList<Component> components = pn.getComponentsS();
 		for (Component c : components) {
 			printd("Component:",c.toString3(),2);
 		}

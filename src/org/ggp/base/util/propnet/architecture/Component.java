@@ -4,13 +4,16 @@ import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.ggp.base.util.propnet.architecture.components.Constant;
+import org.ggp.base.util.propnet.architecture.components.Transition;
+
 /**
  * The root class of the Component hierarchy, which is designed to represent
  * nodes in a PropNet. The general contract of derived classes is to override
  * all methods.
  */
 
-public abstract class Component implements Serializable
+public abstract class Component implements Serializable, Comparable<Component>
 {
 
 	private static final long serialVersionUID = 352524175700224447L;
@@ -21,6 +24,8 @@ public abstract class Component implements Serializable
     private int id;
     private final Set<Component> special;
     private String sp="";
+    // Level for topological sort
+    private int level=0;
     /**
      * Creates a new Component with no inputs or outputs.
      */
@@ -164,7 +169,7 @@ public abstract class Component implements Serializable
     }
     public String getIdString()
     {
-    	return "(".concat(String.valueOf(id)).concat(")");
+    	return String.valueOf(level).concat("(").concat(String.valueOf(id)).concat(")");
     }
     public void setId(int i) {
     	id=i;
@@ -177,6 +182,30 @@ public abstract class Component implements Serializable
     }
     public Set<Component> getSpecial() {
     	return special;
+    }
+    // updates topological sort level
+    public int getLevel() {
+    	return level;
+    }
+    public boolean topoSort() {
+    	int maxl = 0;
+    	for (Component c : getInputs()) {
+    		if (! (c instanceof Constant)  && ! (c instanceof Transition)) {
+	    		if (maxl < c.getLevel()+1) {
+	    			maxl = c.getLevel()+1;
+	    		}
+    		}
+    	}
+    	boolean ans = (maxl <= level);
+    	if (! ans) {
+    		level = maxl;
+    	}
+    	return ans;
+    }
+
+    @Override
+    public int compareTo(Component c) {
+    	return level-c.getLevel();
     }
 
 }
