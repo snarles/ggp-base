@@ -77,6 +77,7 @@ public final class PropNet
 
 	/** References to every Proposition in the PropNet. */
 	private final Set<Proposition> propositions;
+	private Set<Component> transitions;
 
 	/** References to every BaseProposition in the PropNet, indexed by name. */
 	private final Map<GdlSentence, Proposition> basePropositions;
@@ -210,6 +211,12 @@ public final class PropNet
 	{
 		return goalPropositions;
 	}
+
+	public Set<Proposition> getGoalPropositions(Role r)
+	{
+		return goalPropositions.get(r);
+	}
+
 
 	/**
 	 * Getter method. A reference to the single, unique, InitProposition.
@@ -594,6 +601,7 @@ public final class PropNet
 	}
 	public void labelComponents()
 	{
+		transitions = new HashSet<Component>();
 		componentsS = new ArrayList<Component>(components);
 		Collections.sort(componentsS);
 		sorted = new HashMap<Integer, Set<Component>>();
@@ -620,6 +628,7 @@ public final class PropNet
 			count++;
 			inputMatrix.put(new Integer(c.getId()), c.getInputIds());
 			if (c instanceof Transition) {
+				transitions.add(c);
 				c.setSp("TRANS");
 				transitionMatrix.put(new Integer(c.getId()),c.getTransOutputIds());
 			}
@@ -660,6 +669,9 @@ public final class PropNet
 			c.postProcess();
 		}
 
+	}
+	public Set<Component> getTransitions() {
+		return transitions;
 	}
 	public ArrayList<Component> getComponentsS() {
 		return componentsS;
