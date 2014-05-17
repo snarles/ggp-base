@@ -40,10 +40,10 @@ public class TestingConsole {
 	String dir = "C:/github/ggp-base/games/gamemaster/";
 	//String dir = "/Users/snarles/github/ggp-base/games/gamemaster/";
 	//String gamef = "alquerque.kif";
-	//String gamef = "connectfour.kif";
+	String gamef = "connectfour.kif";
 	//String gamef = "pentago.kif";
 	//String gamef = "skirmish.kif";
-	String gamef = "tictactoe.kif";
+	//String gamef = "tictactoe.kif";
 
 	String gameFile = dir.concat(gamef);
 	StateMachine psm = new ProverStateMachine();
@@ -323,8 +323,8 @@ public class TestingConsole {
 					printd("Move:",m.toString(),3);
 				}
 				//((FuzzyPropNetMachine) lsm).printCaches();
-				state1 = getNextState(selectedMove,psm);
-				state2 = getNextState(selectedMove,lsm);
+				state1 = getNextState(selectedMove,psm,"PSM");
+				state2 = getNextState(selectedMove,lsm,"LSM");
 				printd("State:",currentState.toString(),3);
 				Set<GdlSentence> contents1 = state1.getContents();
 				Set<GdlSentence> contents2 = state2.getContents();
@@ -365,14 +365,15 @@ public class TestingConsole {
 			System.out.println(s.concat(u));
 		}
 	}
-	public MachineState getNextState(List<Move> move, StateMachine sm) throws TransitionDefinitionException {
+	public MachineState getNextState(List<Move> move, StateMachine sm, String sn) throws TransitionDefinitionException {
 		long start = System.currentTimeMillis();
 		MachineState newState = sm.getNextState(currentState,move);
 		long elapsed = System.currentTimeMillis()-start;
-		String message = "Time for sm to get next state: ";
+		String message = sn.concat(":Time for sm to get next state: ");
 		message = message.concat(String.valueOf(elapsed));
 		if (messageEachTurn) {
 			System.out.println(message);
+			printd(sn.concat(" STATE:"), newState.toString(),3);
 		}
 		return newState;
 	}

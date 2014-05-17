@@ -144,7 +144,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 	public MachineState getInitialState() {
 		// TODO: Compute the initial state.
 		goToInitial();
-		printNetState();
+		//printNetState();
 		currentState = getStateFromBase();
 		return currentState;
 	}
@@ -288,7 +288,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 			message = message.concat(String.valueOf(netState[i]));
 			//printd(":",message);
 		}
-		printd("Resolved:",String.valueOf(transitions.size()));
+		//printd("Resolved:",String.valueOf(transitions.size()));
 	}
 
 	//done
@@ -298,7 +298,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 		for (Integer i1 : transitions) {
 			Component c = propNet.findComponent(i1.intValue());
 			for (Integer i2 : c.getTransOutputIds()) {
-				printd("On:",i2.toString());
+				//printd("On:",i2.toString());
 				netStateNew[i2.intValue()] = true;
 			}
 		}
@@ -337,6 +337,8 @@ public class FuzzyPropNetMachine extends StateMachine {
 	public MachineState getNextState(MachineState state, List<Move> moves)
 	throws TransitionDefinitionException {
 		setStateMove(state,moves);
+		goToNext();
+		resolve();
 		return currentState;
 	}
 
