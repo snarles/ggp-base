@@ -74,6 +74,7 @@ public class FastPropNetMachine extends StateMachine {
         for (Component c : propNet.getComponentsS()) {
         	deltaState.add(c.getIdInt());
         }
+        //propNet.printComponents();paused();
         resolve();
         goToNext();
 
@@ -162,7 +163,6 @@ public class FastPropNetMachine extends StateMachine {
 				}
 			}
 			else {
-				currentS = true;
 				for (Integer i1 : inputs) {
 					currentS = netState.contains(i1);
 				}
@@ -174,12 +174,12 @@ public class FastPropNetMachine extends StateMachine {
 				}
 			}
 			if ((currentS != oldS) || c.getLevel()==0) {
-				String s = c.toString2();
+				String s = c.toString3();
 				s = s.concat(" from ");
 				s= s.concat(String.valueOf(oldS));
 				s = s.concat(" to ");
 				s= s.concat(String.valueOf(currentS));
-				printd("Delta:",s);
+//				printd("Delta:",s);
 				Set<Integer> outputs = c.getOutputIds();
 				for (Integer i1 : outputs) {
 					if (! deltaState.contains(i1)) {
@@ -188,15 +188,17 @@ public class FastPropNetMachine extends StateMachine {
 				}
 				//printNetState();
 				if (diagnosticMode) {
-					printd("Delta:",s);
-					for (Integer i1 : outputs) {
-						printd("  ->delta:",i1.toString());
-					}
+//					printd("Delta:",s);
+//					for (Integer i1 : outputs) {
+//						printd("  ->delta:",i1.toString());
+//					}
+					//paused();
 				}
 				//paused();
 			}
 		}
 		resolved = true;
+		//printNetState(); printd("Resolved:",String.valueOf(deltaTrans.size())); paused();
 	}
 	public void updateNetState(Integer i, boolean b) {
 		if (b) {
@@ -228,17 +230,23 @@ public class FastPropNetMachine extends StateMachine {
 				deltaState.add(i);
 			}
 		}
+		resolve();
 	}
 
 	public void goToNext() {
+		currentCache.clearDiffs();
 		deltaState = new PriorityQueue<Integer>();
+		//printd("deltaTrans:",deltaTrans.toString());
 		for (Integer i : deltaTrans) {
 			Component c = propNet.findComponent(i.intValue());
+			//printd("Trans:",c.toString3());
 			Set<Integer> outputs = c.getTransOutputIds();
+			//printd(" Outs:",outputs.toString());
 			boolean b = netState.contains(i);
 			for (Integer i1 : outputs) {
 				updateNetState(i1,b);
 				currentCache.notifyDiff(i1);
+				//printd("CCdiff:",String.valueOf(currentCache.getDiffs().size()));
 			}
 		}
 		gameCaches.add(currentCache);
@@ -252,11 +260,15 @@ public class FastPropNetMachine extends StateMachine {
 				minDiff = newDiff;
 			}
 		}
+		long start = System.currentTimeMillis();
 		currentCache = selectedCache.duplicate();
+		long elapsed = System.currentTimeMillis() - start;
+		printd("Time to copy:",String.valueOf(elapsed));
 		if (gameCaches.size() > cacheLimit) {
 			gameCaches.remove(0);
 		}
 		deltaState = currentCache.getDiffs();
+		deltaTrans = new HashSet<Integer>();
 	}
 
 
@@ -288,6 +300,7 @@ public class FastPropNetMachine extends StateMachine {
 
 	//updates current state with moves
 	public void updateCurrent(List<Move> moves) {
+		long start = System.currentTimeMillis();
 		List<GdlSentence> dodos = toDoes(moves);
 		Map<GdlSentence,Proposition> inputMap = propNet.getInputPropositions();
 		Set<Integer> newInputs = new HashSet<Integer>();
@@ -300,9 +313,13 @@ public class FastPropNetMachine extends StateMachine {
 			printCurrentState();
 		}
 		oldInputs = newInputs;
+		goToNext();
+		long elapsed = System.currentTimeMillis() - start;
+		printd("Time for propnet to compute state:",String.valueOf(elapsed));
 	}
 
 	public void printCurrentState() {
+		//printNetState();paused();
 		currentState = getStateFromBase();
 		printd("PropNetState:",currentState.toString());
 	}
@@ -310,32 +327,6 @@ public class FastPropNetMachine extends StateMachine {
 	public MachineState getCurrentState() {
 		currentState = getStateFromBase();
 		return currentState;
-	}
-
-	public Set<Integer> symmDiff(Set<Integer> s1, Set<Integer> s2) {
-		Set<Integer> ans = new HashSet();
-		for (Integer i : s1) {
-			if (! s2.contains(i)) {
-				ans.add(i);
-			}
-		}
-		for (Integer i : s2) {
-			if (! s1.contains(i)) {
-				ans.add(i);
-			}
-		}
-		return ans;
-	}
-
-	// updates the current net state after adding new ints to deltaState
-	public void updateNetState(Set<Integer> ups) {
-		for (Integer i : ups) {
-			deltaState.add(i);
-		}
-		resolve();
-		goToNext();
-		//printNetState();
-
 	}
 
 	/* Already implemented for you */
@@ -440,6 +431,13 @@ public class FastPropNetMachine extends StateMachine {
 				System.out.println(s);
 			}
 		}
+	}
+
+	public void printCaches() {
+		for (FastGameCache fgc : gameCaches) {
+			printd("CACHE:",fgc.toString());
+		}
+		printd("CURRE:",currentCache.toString());
 	}
 
 	public void paused() {

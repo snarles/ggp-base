@@ -19,11 +19,6 @@ public final class Transition extends Component
 		return getSingleInput().getValue();
 	}
 
-	@Override
-	public void addOutput(Component c) {
-		outputs.add(c);
-        transOutputs.add(c);
-	}
 
 	/**
 	 * @see org.ggp.base.util.propnet.architecture.Component#toString()

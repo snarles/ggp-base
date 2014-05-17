@@ -166,9 +166,9 @@ public class FastGameCache {
     @Override
 	public String toString() {
     	String s="";
-    	s = s.concat("Diffs:").concat(String.valueOf(arg0))
-    	s = s.concat(stringBase());
-
+    	s = s.concat("Diffs:").concat(String.valueOf(diffCount));
+    	s = s.concat(" ").concat(stringBase());
+    	return s;
     }
 
 }

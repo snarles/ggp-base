@@ -59,11 +59,25 @@ public abstract class Component implements Serializable, Comparable<Component>
     public void addInput(Component input)
     {
     	inputs.add(input);
-    	if (input instanceof Transition) {
-    		transInputs.add(input);
+
+    }
+
+    public void postProcess() {
+    	for (Component input : inputs ) {
+	    	if (input instanceof Transition) {
+	    		transInputs.add(input);
+	    	}
+	    	else {
+	    		ntransInputs.add(input);
+	    	}
     	}
-    	else {
-    		ntransInputs.add(input);
+    	for (Component output : outputs) {
+    		if (sp=="TRANS") {
+    			transOutputs.add(output);
+    		}
+    		else {
+    			ntransOutputs.add(output);
+    		}
     	}
     }
 
@@ -96,7 +110,6 @@ public abstract class Component implements Serializable, Comparable<Component>
     public void addOutput(Component output)
     {
         outputs.add(output);
-        ntransOutputs.add(output);
     }
 
     /**
@@ -253,14 +266,14 @@ public abstract class Component implements Serializable, Comparable<Component>
     }
 
     public Set<Integer> getOutputIds() {
-    	Set<Integer> ans = new HashSet();
+    	Set<Integer> ans = new HashSet<Integer>();
     	for (Component c : ntransOutputs) {
     		ans.add(new Integer(c.getId()));
     	}
     	return ans;
     }
     public Set<Integer> getInputIds() {
-    	Set<Integer> ans = new HashSet();
+    	Set<Integer> ans = new HashSet<Integer>();
     	for (Component c : ntransInputs) {
     		ans.add(new Integer(c.getId()));
     	}
@@ -268,14 +281,14 @@ public abstract class Component implements Serializable, Comparable<Component>
     }
 
     public Set<Integer> getTransOutputIds() {
-    	Set<Integer> ans = new HashSet();
+    	Set<Integer> ans = new HashSet<Integer>();
     	for (Component c : transOutputs) {
     		ans.add(new Integer(c.getId()));
     	}
     	return ans;
     }
     public Set<Integer> getTransInputIds() {
-    	Set<Integer> ans = new HashSet();
+    	Set<Integer> ans = new HashSet<Integer>();
     	for (Component c : transInputs) {
     		ans.add(new Integer(c.getId()));
     	}

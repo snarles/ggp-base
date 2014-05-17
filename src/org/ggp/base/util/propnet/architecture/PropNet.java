@@ -592,6 +592,7 @@ public final class PropNet
 		int count = -1;
 		int maxlv = 0;
 		for (Component c : componentsS) {
+
 			count++;
 			c.setId(count);
 			if (c.getLevel() > maxlv) {
@@ -643,6 +644,9 @@ public final class PropNet
 				allCounts.add(c.getOutcount(i));
 			}
 		}
+		for (Component c : componentsS) {
+			c.postProcess();
+		}
 
 	}
 	public ArrayList<Component> getComponentsS() {
@@ -675,6 +679,12 @@ public final class PropNet
 	}
 	public ArrayList<Integer> getAllCounts() {
 		return allCounts;
+	}
+
+	public void printComponents() {
+		for (Component c : componentsS) {
+			System.out.println("Component:".concat(c.toString3()).concat("++").concat(String.valueOf(c.getOutcount(0))));
+		}
 	}
 
 }

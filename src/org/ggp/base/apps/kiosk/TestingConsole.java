@@ -28,7 +28,7 @@ import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
-import org.ggp.base.util.statemachine.implementation.propnet.LightPropNetMachine;
+import org.ggp.base.util.statemachine.implementation.propnet.FastPropNetMachine;
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 
@@ -40,14 +40,14 @@ public class TestingConsole {
 	String dir = "C:/github/ggp-base/games/gamemaster/";
 	//String dir = "/Users/snarles/github/ggp-base/games/gamemaster/";
 	//String gamef = "alquerque.kif";
-	//String gamef = "connectfour.kif";
+	String gamef = "connectfour.kif";
 	//String gamef = "pentago.kif";
 	//String gamef = "skirmish.kif";
-	String gamef = "tictactoe.kif";
+	//String gamef = "tictactoe.kif";
 
 	String gameFile = dir.concat(gamef);
 	StateMachine psm = new ProverStateMachine();
-	StateMachine lsm = new LightPropNetMachine();
+	StateMachine lsm = new FastPropNetMachine();
 	MachineState currentState;
 	int currentTurn = -1;
 	boolean messageEachTurn = true;
@@ -74,9 +74,12 @@ public class TestingConsole {
 		List<Gdl> theRules = theGame.getRules();
 		psm.initialize(theRules);
 		psm.setSeed(0);
+
 		lsm.initialize(theRules);
-		pn = ((LightPropNetMachine) lsm).getPropNet();
-//		PropNetAnnotatedFlattener af = new PropNetAnnotatedFlattener(theRules);
+
+		pn = ((FastPropNetMachine) lsm).getPropNet();
+		//printComponents();paused(1);
+		//		PropNetAnnotatedFlattener af = new PropNetAnnotatedFlattener(theRules);
 //		long start = System.currentTimeMillis();
 //		List<GdlRule> flatDescription = af.flatten();
 //		long elapsed = System.currentTimeMillis()-start;
@@ -97,19 +100,23 @@ public class TestingConsole {
 //			e.printStackTrace();
 //		}
 		//paused(1);
-		printComponents();paused(1);
+
 		randomAdvance();
 
-		//((LightPropNetMachine) lsm).setState(currentState);
-
-		paused(1);
-		randomAdvance();
+		//((FastPropNetMachine) lsm).setState(currentState);
 
 		paused(1);
 		randomAdvance();
 
 		paused(1);
 		randomAdvance();
+		paused(1);
+		randomAdvance();
+		paused(1);
+		randomAdvance();
+		paused(1);
+		randomAdvance();
+
 
 //		List<List<Move>> moves = null;
 //		try {
@@ -278,7 +285,7 @@ public class TestingConsole {
 				currentTurn++;
 				start = System.currentTimeMillis();
 				currentState = psm.getInitialState();
-				((LightPropNetMachine) lsm).goToInitial();
+				((FastPropNetMachine) lsm).goToInitial();
 				elapsed = System.currentTimeMillis()-start;
 				message = "Time to get initial state: ";
 				message = message.concat(String.valueOf(elapsed));
@@ -297,15 +304,16 @@ public class TestingConsole {
 				for (Move m : selectedMove) {
 					printd("Move:",m.toString(),3);
 				}
-				((LightPropNetMachine) lsm).updateCurrent(selectedMove);
+				((FastPropNetMachine) lsm).updateCurrent(selectedMove);
 				System.out.println(selectedMove.toString());
 				for (Move m : selectedMove) {
 					printd("Move:",m.toString(),3);
 				}
+				((FastPropNetMachine) lsm).printCaches();
 				currentState = getNextState(selectedMove);
 				printd("State:",currentState.toString(),3);
 				Set<GdlSentence> contents1 = currentState.getContents();
-				Set<GdlSentence> contents2 = ((LightPropNetMachine) lsm).getCurrentState().getContents();
+				Set<GdlSentence> contents2 = ((FastPropNetMachine) lsm).getCurrentState().getContents();
 				if (contents1.equals(contents2)) {
 					printd("!!MATCH!!","",3);
 				}
