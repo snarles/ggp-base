@@ -1,6 +1,7 @@
 package org.ggp.base.util.propnet.architecture;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -19,17 +20,22 @@ public abstract class Component implements Serializable, Comparable<Component>
     /** The inputs to the component. */
     private final Set<Component> inputs;
     /** The outputs of the component. */
-    private final Set<Component> outputs;
-    //inputs which are transitions
+    protected final Set<Component> outputs;
+    //inputs which are not transitions
+    private final Set<Component> ntransInputs;
+    //outputs given that C is a transition
+    protected final Set<Component> ntransOutputs;
+    //inputs which are not transitions
     private final Set<Component> transInputs;
     //outputs given that C is a transition
-    private final Set<Component> transOutputs;
+    protected final Set<Component> transOutputs;
 
     private int id;
     private final Set<Component> special;
     private String sp="";
     // Level for topological sort
     private int level=0;
+    private ArrayList<Integer> outCount = new ArrayList<Integer>();
     /**
      * Creates a new Component with no inputs or outputs.
      */
@@ -39,6 +45,8 @@ public abstract class Component implements Serializable, Comparable<Component>
         this.outputs = new HashSet<Component>();
         this.transInputs = new HashSet<Component>();
         this.transOutputs = new HashSet<Component>();
+        this.ntransInputs = new HashSet<Component>();
+        this.ntransOutputs = new HashSet<Component>();
         this.special = new HashSet<Component>();
     }
 
@@ -50,11 +58,12 @@ public abstract class Component implements Serializable, Comparable<Component>
      */
     public void addInput(Component input)
     {
+    	inputs.add(input);
     	if (input instanceof Transition) {
     		transInputs.add(input);
     	}
     	else {
-    		inputs.add(input);
+    		ntransInputs.add(input);
     	}
     }
 
@@ -87,6 +96,7 @@ public abstract class Component implements Serializable, Comparable<Component>
     public void addOutput(Component output)
     {
         outputs.add(output);
+        ntransOutputs.add(output);
     }
 
     /**
@@ -121,7 +131,15 @@ public abstract class Component implements Serializable, Comparable<Component>
         return outputs;
     }
 
+    public Set<Component> getNtransOutputs()
+    {
+        return ntransOutputs;
+    }
 
+    public Set<Component> getNtransInputs()
+    {
+        return ntransInputs;
+    }
     public Set<Component> getTransOutputs()
     {
         return transOutputs;
@@ -236,29 +254,59 @@ public abstract class Component implements Serializable, Comparable<Component>
 
     public Set<Integer> getOutputIds() {
     	Set<Integer> ans = new HashSet();
-    	for (Component c : outputs) {
+    	for (Component c : ntransOutputs) {
     		ans.add(new Integer(c.getId()));
     	}
     	return ans;
     }
     public Set<Integer> getInputIds() {
     	Set<Integer> ans = new HashSet();
-    	for (Component c : inputs) {
+    	for (Component c : ntransInputs) {
     		ans.add(new Integer(c.getId()));
     	}
     	return ans;
     }
 
+    public Set<Integer> getTransOutputIds() {
+    	Set<Integer> ans = new HashSet();
+    	for (Component c : transOutputs) {
+    		ans.add(new Integer(c.getId()));
+    	}
+    	return ans;
+    }
+    public Set<Integer> getTransInputIds() {
+    	Set<Integer> ans = new HashSet();
+    	for (Component c : transInputs) {
+    		ans.add(new Integer(c.getId()));
+    	}
+    	return ans;
+    }
+
+
     public int countOutputs(int depth) {
-    	if (depth ==0 ) {
-    		return outputs.size();
+    	int sum=0;
+    	if (depth >= outCount.size()) {
+	    	if (depth ==0 ) {
+	    		sum =  outputs.size();
+	    	}
+	    	else {
+	    		for (Component c : outputs) {
+	    			sum = sum + c.countOutputs(depth-1);
+	    		}
+	    	}
+    		outCount.add(new Integer(sum));
+    		return  sum;
     	}
     	else {
-    		int sum = 0;
-    		for (Component c : outputs) {
-    			sum = sum + c.countOutputs(depth-1);
-    		}
-    		return sum;
+    		return outCount.get(depth).intValue();
+    	}
+    }
+    public int getOutcount(int depth) {
+    	if (depth >= outCount.size()) {
+    		return 0;
+    	}
+    	else {
+    		return outCount.get(depth);
     	}
     }
 

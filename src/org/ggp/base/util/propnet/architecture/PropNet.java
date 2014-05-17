@@ -73,6 +73,7 @@ public final class PropNet
 	/** References to every component in the PropNet. */
 	private final Set<Component> components;
 	private ArrayList<Component> componentsS;
+	private ArrayList<Integer> allCounts;
 
 	/** References to every Proposition in the PropNet. */
 	private final Set<Proposition> propositions;
@@ -609,7 +610,8 @@ public final class PropNet
 			count++;
 			inputMatrix.put(new Integer(c.getId()), c.getInputIds());
 			if (c instanceof Transition) {
-				transitionMatrix.put(new Integer(c.getId()),c.getOutputIds());
+				c.setSp("TRANS");
+				transitionMatrix.put(new Integer(c.getId()),c.getTransOutputIds());
 			}
 			else {
 				outputMatrix.put(new Integer(c.getId()), c.getOutputIds());
@@ -634,6 +636,14 @@ public final class PropNet
 		initProposition.setSp("INITPROP");
 		terminalProposition.setSp("TERMINAL");
 
+		for (int i =0; i < 1; i++) {
+			allCounts = new ArrayList<Integer>();
+			for (Component c : componentsS) {
+				c.countOutputs(i);
+				allCounts.add(c.getOutcount(i));
+			}
+		}
+
 	}
 	public ArrayList<Component> getComponentsS() {
 		return componentsS;
@@ -656,6 +666,15 @@ public final class PropNet
 	public Map<Integer,Set<Integer>> getTransitionMatrix() {
 		return transitionMatrix;
 	}
-
+	public Set<Integer> getBaseIds() {
+		Set<Integer> ans = new HashSet<Integer>();
+		for (Proposition p : basePropositions.values()) {
+			ans.add(p.getIdInt());
+		}
+		return ans;
+	}
+	public ArrayList<Integer> getAllCounts() {
+		return allCounts;
+	}
 
 }

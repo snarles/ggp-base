@@ -97,7 +97,7 @@ public class TestingConsole {
 //			e.printStackTrace();
 //		}
 		//paused(1);
-		//printComponents();paused(1);
+		printComponents();paused(1);
 		randomAdvance();
 
 		//((LightPropNetMachine) lsm).setState(currentState);
@@ -249,7 +249,7 @@ public class TestingConsole {
 	public void printComponents() {
 		ArrayList<Component> components = pn.getComponentsS();
 		for (Component c : components) {
-			printd("Component:",c.toString3(),2);
+			printd("Component:",c.toString3().concat("++").concat(String.valueOf(c.getOutcount(0))),2);
 		}
 	}
 

@@ -35,19 +35,20 @@ import org.ggp.base.util.statemachine.implementation.prover.query.ProverQueryBui
 
 @SuppressWarnings("unused")
 public class FastPropNetMachine extends StateMachine {
-    /** The underlying proposition network  */
+	private int cacheLimit = 5;
 	private boolean diagnosticMode = true;
     private PropNet propNet;
-    /** The topological ordering of the propositions */
-    //private List<Proposition> ordering;
-    /** The player roles */
     private List<Role> roles;
     private Set<Integer> netState = null;
+    private Set<Integer> oldInputs = null;
+
     private PriorityQueue<Integer> deltaState = null;
     private Set<Integer> deltaTrans = null;
     private boolean resolved = false;
     private MachineState currentState = null;
     private List<FastGameCache> gameCaches = null;
+    private FastGameCache currentCache = null;
+    private Set<Integer> baseSet = null;
 
     @Override
     public void initialize(List<Gdl> description) {
@@ -60,11 +61,23 @@ public class FastPropNetMachine extends StateMachine {
         propNet.topoSort();
         propNet.labelComponents();
         roles = propNet.getRoles();
+        currentCache = new FastGameCache(propNet);
+        baseSet = propNet.getBaseIds();
+
         netState = new HashSet<Integer>();
+        oldInputs = new HashSet<Integer>();
+
+        deltaState = new PriorityQueue<Integer>();
+        deltaTrans = new HashSet<Integer>();
+
         gameCaches = new ArrayList<FastGameCache>();
         for (Component c : propNet.getComponentsS()) {
         	deltaState.add(c.getIdInt());
         }
+        resolve();
+        goToNext();
+
+
     }
 
 
@@ -82,32 +95,29 @@ public class FastPropNetMachine extends StateMachine {
 	}
 
 
-//	@Override
-//	public MachineState getInitialState() {
-//		// TODO: Compute the initial state.
-//		goToInitial();
-//		currentState = getStateFromBase();
-//		return null;
-//	}
+	@Override
+	public MachineState getInitialState() {
+		// TODO: Compute the initial state.
+		goToInitial();
+		currentState = getStateFromBase();
+		return currentState;
+	}
 //
 //
-//	public void goToInitial() {
-//		netState = new boolean[propNet.getSize()];
-//
-//		deltaState = new PriorityQueue<Integer>();
-//		Integer i0 = new Integer(propNet.getInitProposition().getId());
-//		deltaState.add(i0);
-//		netState[i0.intValue()] = true;
-//		resolved = false;
-//		resolve();
-//		goToNext();
-//		netState[i0.intValue()] = false;
-//		deltaState.add(i0);
-//		//printNetState();
-//		if (diagnosticMode) {
-//			printCurrentState();
-//		}
-//	}
+	public void goToInitial() {
+		Integer i0 = new Integer(propNet.getInitProposition().getId());
+		updateNetState(i0,true);
+		deltaState.add(i0);
+		resolved = false;
+		resolve();
+		goToNext();
+		updateNetState(i0,false);
+		deltaState.add(i0);
+		//printNetState();
+		if (diagnosticMode) {
+			printCurrentState();
+		}
+	}
 
 
 
@@ -142,19 +152,25 @@ public class FastPropNetMachine extends StateMachine {
 			else if (c instanceof Or) {
 				currentS = false;
 				for (Integer i1 : inputs) {
-					currentS = currentS || netState[i1.intValue()];
+					currentS = currentS || netState.contains(i1);
 				}
 			}
 			else if (c instanceof Not) {
 				currentS = true;
 				for (Integer i1 : inputs) {
-					currentS = ! netState[i1.intValue()];
+					currentS = ! netState.contains(i1);
 				}
 			}
 			else {
 				currentS = true;
 				for (Integer i1 : inputs) {
-					currentS = netState[i1.intValue()];
+					currentS = netState.contains(i1);
+				}
+			}
+			if (currentS != oldS) {
+				updateNetState(i,currentS);
+				if (c instanceof Transition) {
+					deltaTrans.add(i);
 				}
 			}
 			if ((currentS != oldS) || c.getLevel()==0) {
@@ -164,22 +180,17 @@ public class FastPropNetMachine extends StateMachine {
 				s = s.concat(" to ");
 				s= s.concat(String.valueOf(currentS));
 				printd("Delta:",s);
-				netState[i] = currentS;
 				Set<Integer> outputs = c.getOutputIds();
-				if (! (c instanceof Transition)) {
-					for (Integer i1 : outputs) {
-						if (! deltaState.contains(i1)) {
-							deltaState.add(i1);
-						}
+				for (Integer i1 : outputs) {
+					if (! deltaState.contains(i1)) {
+						deltaState.add(i1);
 					}
 				}
 				//printNetState();
 				if (diagnosticMode) {
 					printd("Delta:",s);
-					if (! (c instanceof Transition)) {
-						for (Integer i1 : outputs) {
-							printd("  ->delta:",i1.toString());
-						}
+					for (Integer i1 : outputs) {
+						printd("  ->delta:",i1.toString());
 					}
 				}
 				//paused();
@@ -187,21 +198,65 @@ public class FastPropNetMachine extends StateMachine {
 		}
 		resolved = true;
 	}
-
-	public void goToNext() {
-		Map<Integer,Set<Integer>> transitionMap = propNet.getTransitionMatrix();
-		deltaState = new PriorityQueue<Integer>();
-		for (Integer i1 : transitionMap.keySet()) {
-			for (Integer i2 : transitionMap.get(i1)) {
-				boolean oldV = netState[i2.intValue()];
-				boolean newV = netState[i1.intValue()];
-				if (oldV != newV) {
-					deltaState.add(i2);
-					netState[i2.intValue()] = newV;
-				}
+	public void updateNetState(Integer i, boolean b) {
+		if (b) {
+			netState.add(i);
+		}
+		else {
+			netState.remove(i);
+		}
+		if (baseSet.contains(i)) {
+			for (FastGameCache f : gameCaches) {
+				f.notifyUpdate(i, b);
 			}
 		}
+	}
+
+	public void updateMoves(Set<Integer> newInputs) {
+		for (FastGameCache f : gameCaches) {
+			f.notifyMoves(newInputs);
+		}
+		for (Integer i : oldInputs) {
+			if (! newInputs.contains(i)) {
+				netState.remove(i);
+				deltaState.add(i);
+			}
+		}
+		for (Integer i : newInputs) {
+			if (! oldInputs.contains(i)) {
+				netState.add(i);
+				deltaState.add(i);
+			}
+		}
+	}
+
+	public void goToNext() {
+		deltaState = new PriorityQueue<Integer>();
+		for (Integer i : deltaTrans) {
+			Component c = propNet.findComponent(i.intValue());
+			Set<Integer> outputs = c.getTransOutputIds();
+			boolean b = netState.contains(i);
+			for (Integer i1 : outputs) {
+				updateNetState(i1,b);
+				currentCache.notifyDiff(i1);
+			}
+		}
+		gameCaches.add(currentCache);
 		resolved = false;
+		int minDiff = 0;
+		FastGameCache selectedCache = currentCache;
+		for (FastGameCache fgc : gameCaches) {
+			int newDiff = fgc.getDiffCount();
+			if (newDiff < minDiff) {
+				selectedCache = fgc;
+				minDiff = newDiff;
+			}
+		}
+		currentCache = selectedCache.duplicate();
+		if (gameCaches.size() > cacheLimit) {
+			gameCaches.remove(0);
+		}
+		deltaState = currentCache.getDiffs();
 	}
 
 
@@ -235,19 +290,12 @@ public class FastPropNetMachine extends StateMachine {
 	public void updateCurrent(List<Move> moves) {
 		List<GdlSentence> dodos = toDoes(moves);
 		Map<GdlSentence,Proposition> inputMap = propNet.getInputPropositions();
-		Set<Integer> newInputs = new HashSet();
+		Set<Integer> newInputs = new HashSet<Integer>();
 		for (GdlSentence g : dodos) {
 			Proposition p = inputMap.get(g);
 			newInputs.add(new Integer(p.getId()));
 		}
-		for (Integer i : oldInputs) {
-			netState[i.intValue()] = false;
-		}
-		for (Integer i : newInputs) {
-			netState[i.intValue()] = true;
-		}
-		Set<Integer> ups = symmDiff(newInputs,oldInputs);
-		updateNetState(ups);
+		updateMoves(newInputs);
 		if (diagnosticMode) {
 			printCurrentState();
 		}
@@ -353,14 +401,12 @@ public class FastPropNetMachine extends StateMachine {
 	public MachineState getStateFromBase()
 	{
 		Set<GdlSentence> contents = new HashSet<GdlSentence>();
-		for (Proposition p : propNet.getBasePropositions().values())
-		{
-			int i = p.getId();
-			if (netState[i])
+		for (Integer i : netState) {
+			Component c = propNet.findComponent(i.intValue());
+			if (c.getSp()=="BASE")
 			{
-				contents.add(p.getName());
+				contents.add(((Proposition) c).getName());
 			}
-
 		}
 		return new MachineState(contents);
 	}
@@ -370,7 +416,7 @@ public class FastPropNetMachine extends StateMachine {
 		return propNet;
 	}
 
-	public boolean[] getNetState() {
+	public Set<Integer> getNetState() {
 		return netState;
 	}
 
@@ -378,7 +424,7 @@ public class FastPropNetMachine extends StateMachine {
 		if (diagnosticMode) {
 			for (int i = 0; i < propNet.getSize(); i++) {
 				String s = "";
-				if (netState[i]) {
+				if (netState.contains(new Integer(i))) {
 					s=s.concat("[ X ]");
 				}
 				else {
