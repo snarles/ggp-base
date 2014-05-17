@@ -20,6 +20,11 @@ public abstract class Component implements Serializable, Comparable<Component>
     private final Set<Component> inputs;
     /** The outputs of the component. */
     private final Set<Component> outputs;
+    //inputs which are transitions
+    private final Set<Component> transInputs;
+    //outputs given that C is a transition
+    private final Set<Component> transOutputs;
+
     private int id;
     private final Set<Component> special;
     private String sp="";
@@ -32,6 +37,8 @@ public abstract class Component implements Serializable, Comparable<Component>
     {
         this.inputs = new HashSet<Component>();
         this.outputs = new HashSet<Component>();
+        this.transInputs = new HashSet<Component>();
+        this.transOutputs = new HashSet<Component>();
         this.special = new HashSet<Component>();
     }
 
@@ -43,7 +50,12 @@ public abstract class Component implements Serializable, Comparable<Component>
      */
     public void addInput(Component input)
     {
-        inputs.add(input);
+    	if (input instanceof Transition) {
+    		transInputs.add(input);
+    	}
+    	else {
+    		inputs.add(input);
+    	}
     }
 
     public void removeInput(Component input)
@@ -109,6 +121,17 @@ public abstract class Component implements Serializable, Comparable<Component>
         return outputs;
     }
 
+
+    public Set<Component> getTransOutputs()
+    {
+        return transOutputs;
+    }
+
+    public Set<Component> getTransInputs()
+    {
+        return transInputs;
+    }
+
     /**
      * A convenience method, to get a single output.
      * To be used only when the component is known to have
@@ -166,6 +189,9 @@ public abstract class Component implements Serializable, Comparable<Component>
     {
     	return id;
     }
+    public Integer getIdInt() {
+    	return new Integer(id);
+    }
     public String getIdString()
     {
     	return String.valueOf(level).concat("(").concat(String.valueOf(id)).concat(")");
@@ -221,6 +247,19 @@ public abstract class Component implements Serializable, Comparable<Component>
     		ans.add(new Integer(c.getId()));
     	}
     	return ans;
+    }
+
+    public int countOutputs(int depth) {
+    	if (depth ==0 ) {
+    		return outputs.size();
+    	}
+    	else {
+    		int sum = 0;
+    		for (Component c : outputs) {
+    			sum = sum + c.countOutputs(depth-1);
+    		}
+    		return sum;
+    	}
     }
 
 
