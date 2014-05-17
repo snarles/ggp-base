@@ -142,6 +142,15 @@ public final class PropNet
 	    return roles;
 	}
 
+	public List<GdlConstant> getRoleNames()
+	{
+		List<GdlConstant> ans = new ArrayList<GdlConstant>();
+		for (Role r : roles) {
+			ans.add(r.getName());
+		}
+	    return ans;
+	}
+
 	public Map<Proposition, Proposition> getLegalInputMap()
 	{
 		return legalInputMap;
@@ -626,12 +635,15 @@ public final class PropNet
 		}
 		for (Role r : legalPropositions.keySet()) {
 			for (Component c : legalPropositions.get(r)) {
-				c.setSp("LEGAL ".concat(r.toString()));
+				c.setSp("LEGAL");
+				c.setOwner(r.getName());
 			}
 		}
 		for (Role r : goalPropositions.keySet()) {
 			for (Component c : goalPropositions.get(r)) {
-				c.setSp("GOAL ".concat(r.toString()));
+				c.setSp("GOAL");
+				c.setOwner(r.getName());
+				c.setGoal(Integer.parseInt(((Proposition) c).getName().toString().split(" ")[3]));
 			}
 		}
 		initProposition.setSp("INITPROP");

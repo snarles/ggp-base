@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.ggp.base.util.gdl.grammar.GdlConstant;
 import org.ggp.base.util.propnet.architecture.components.Transition;
 
 /**
@@ -33,9 +34,11 @@ public abstract class Component implements Serializable, Comparable<Component>
     private int id;
     private final Set<Component> special;
     private String sp="";
+    private GdlConstant owner;
     // Level for topological sort
     private int level=0;
     private ArrayList<Integer> outCount = new ArrayList<Integer>();
+    private int goal;
     /**
      * Creates a new Component with no inputs or outputs.
      */
@@ -322,7 +325,18 @@ public abstract class Component implements Serializable, Comparable<Component>
     		return outCount.get(depth);
     	}
     }
-
+    public void setOwner(GdlConstant g) {
+    	owner = g;
+    }
+    public GdlConstant getOwner() {
+    	return owner;
+    }
+    public void setGoal(int i) {
+    	goal = i;
+    }
+    public int getGoal() {
+    	return goal;
+    }
 
 
 }

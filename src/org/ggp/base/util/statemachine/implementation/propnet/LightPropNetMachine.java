@@ -42,12 +42,16 @@ public class LightPropNetMachine extends StateMachine {
     //private List<Proposition> ordering;
     /** The player roles */
     private List<Role> roles;
+    private List<GdlConstant> roleNames;
     private boolean[] netState = null;
     private PriorityQueue<Integer> deltaState = null;
     private Set<Integer> deltaTrans = null;
     private boolean resolved = false;
     private MachineState currentState = null;
     private Set<Integer> oldInputs = null;
+    private Set<Integer> legals = null;
+    private Set<Integer> goals = null;
+
     /**
      * Initializes the PropNetStateMachine. You should compute the topological
      * ordering here. Additionally you may compute the initial state here, at
@@ -55,6 +59,7 @@ public class LightPropNetMachine extends StateMachine {
      */
     @Override
     public void initialize(List<Gdl> description) {
+    	long start = System.currentTimeMillis();
         try {
 			propNet = OptimizingPropNetFactory.create(description, false);
 		} catch (InterruptedException e) {
@@ -64,26 +69,21 @@ public class LightPropNetMachine extends StateMachine {
         propNet.topoSort();
         propNet.labelComponents();
         roles = propNet.getRoles();
+        roleNames = propNet.getRoleNames();
         netState = new boolean[propNet.getSize()];
         oldInputs = new HashSet<Integer>();
-    }
+        deltaTrans = new HashSet<Integer>();
+        deltaState = new PriorityQueue<Integer>();
+        legals = new HashSet<Integer>();
+        goals = new HashSet<Integer>();
 
-    public void cloneInitialize(List<Role> rs, PropNet pn, boolean[] ns, PriorityQueue<Integer> ds, Set<Integer> dt, boolean res, MachineState ms, Set<Integer> oi) {
-    	roles = rs;
-    	propNet = pn;
-    	netState = Arrays.copyOf(ns,pn.getSize());
-    	deltaState = new PriorityQueue<Integer>(ds);
-    	deltaTrans = new HashSet<Integer>(dt);
-    	resolved = res;
-    	currentState = ms;
-    	oldInputs = new HashSet<Integer>(oi);
-    }
-
-    @Override
-	public LightPropNetMachine clone() {
-    	LightPropNetMachine newb = new LightPropNetMachine();
-    	newb.cloneInitialize(roles,propNet,netState,deltaState,deltaTrans,resolved,currentState,oldInputs);
-    	return newb;
+        for (Component c : propNet.getComponentsS()) {
+        	deltaState.add(c.getIdInt());
+        }
+        resolve();
+        goToNext();
+        long elapsed = System.currentTimeMillis()-start;
+        printd("Time for LPNM to init:",String.valueOf(elapsed));
     }
 
 	/**
@@ -96,6 +96,30 @@ public class LightPropNetMachine extends StateMachine {
 		return false;
 	}
 
+	public boolean nowTerminal() {
+		Integer i0 = propNet.getTerminalProposition().getIdInt();
+		return netState[i0.intValue()];
+	}
+
+	public int currentGoal(GdlConstant r) {
+		int goal = -1;
+		for (Integer i : goals) {
+			Component c = propNet.findComponent(i);
+			if (c.getOwner().equals(r)) {
+				goal = c.getGoal();
+			}
+		}
+		return goal;
+	}
+
+	public int[] currentGoals() {
+		int[] ans = new int[roleNames.size()];
+		int count=0;
+		for (GdlConstant r : roleNames) {
+			ans[count] = currentGoal(r); count++;
+		}
+		return ans;
+	}
 	/**
 	 * Computes the goal for a role in the current state.
 	 * Should return the value of the goal proposition that
@@ -126,8 +150,6 @@ public class LightPropNetMachine extends StateMachine {
 
 
 	public void goToInitial() {
-		netState = new boolean[propNet.getSize()];
-
 		deltaState = new PriorityQueue<Integer>();
 		Integer i0 = new Integer(propNet.getInitProposition().getId());
 		deltaState.add(i0);
@@ -160,7 +182,6 @@ public class LightPropNetMachine extends StateMachine {
 	// Given updates loaded in deltaState, propagates changes forward
 	public void resolve()
 	{
-		Map<Integer,Set<Integer>> outputMatrix = propNet.getOutputMatrix();
 		while (deltaState.size() > 0) {
 			int i = deltaState.remove().intValue();
 			boolean currentS= netState[i];
@@ -196,31 +217,48 @@ public class LightPropNetMachine extends StateMachine {
 					}
 				}
 			}
+			if (currentS != oldS) {
+				if (c.getSp()=="TRANS") {
+					deltaTrans.add(i);
+				}
+				if (c.getSp()=="LEGAL") {
+					if (legals.contains(i)) {
+						legals.remove(i);
+					}
+					else {
+						legals.add(i);
+					}
+				}
+				if (c.getSp()=="GOAL") {
+					if (goals.contains(i)) {
+						goals.remove(i);
+					}
+					else {
+						goals.add(i);
+					}
+				}
+			}
 			if ((currentS != oldS) || c.getLevel()==0) {
 				String s = c.toString2();
 				s = s.concat(" from ");
 				s= s.concat(String.valueOf(oldS));
 				s = s.concat(" to ");
 				s= s.concat(String.valueOf(currentS));
-				printd("Delta:",s);
+				//printd("Delta:",s);
 				netState[i] = currentS;
 				Set<Integer> outputs = c.getOutputIds();
-				if (! (c instanceof Transition)) {
-					for (Integer i1 : outputs) {
-						if (! deltaState.contains(i1)) {
-							deltaState.add(i1);
-						}
+				for (Integer i1 : outputs) {
+					if (! deltaState.contains(i1)) {
+						deltaState.add(i1);
 					}
 				}
 				//printNetState();
-				if (diagnosticMode) {
-					printd("Delta:",s);
-					if (! (c instanceof Transition)) {
-						for (Integer i1 : outputs) {
-							printd("  ->delta:",i1.toString());
-						}
-					}
-				}
+//				if (diagnosticMode) {
+//					printd("Delta:",s);
+//					for (Integer i1 : outputs) {
+//						printd("  ->delta:",i1.toString());
+//					}
+//				}
 				//paused();
 			}
 		}
@@ -228,10 +266,10 @@ public class LightPropNetMachine extends StateMachine {
 	}
 
 	public void goToNext() {
-		Map<Integer,Set<Integer>> transitionMap = propNet.getTransitionMatrix();
 		deltaState = new PriorityQueue<Integer>();
-		for (Integer i1 : transitionMap.keySet()) {
-			for (Integer i2 : transitionMap.get(i1)) {
+		for (Integer i1 : deltaTrans) {
+			Component c = propNet.findComponent(i1.intValue());
+			for (Integer i2 : c.getTransOutputIds()) {
 				boolean oldV = netState[i2.intValue()];
 				boolean newV = netState[i1.intValue()];
 				if (oldV != newV) {
@@ -241,10 +279,28 @@ public class LightPropNetMachine extends StateMachine {
 			}
 		}
 		resolved = false;
+		deltaTrans = new HashSet<Integer>();
 	}
 
 
+	public List<Integer> getLegalInputs(GdlConstant r) {
+		List<Integer> ans = new ArrayList<Integer>();
+		for (Integer i : legals) {
+			if (propNet.findComponent(i.intValue()).getOwner().equals(r)) {
+				ans.add(i);
+			}
+		}
+		return ans;
+	}
 
+	public List<Integer> getRandomJointInput() {
+		List<Integer> newInputs = new ArrayList<Integer>();
+		for (GdlConstant r : roleNames) {
+			List<Integer> availInputs = getLegalInputs(r);
+			newInputs.add(availInputs.get(rand.nextInt(availInputs.size())));
+		}
+		return newInputs;
+	}
 	/**
 	 * Computes the legal moves for role in state.
 	 */
@@ -272,9 +328,10 @@ public class LightPropNetMachine extends StateMachine {
 
 	//updates current state with moves
 	public void updateCurrent(List<Move> moves) {
+		long start = System.currentTimeMillis();
 		List<GdlSentence> dodos = toDoes(moves);
 		Map<GdlSentence,Proposition> inputMap = propNet.getInputPropositions();
-		Set<Integer> newInputs = new HashSet();
+		Set<Integer> newInputs = new HashSet<Integer>();
 		for (GdlSentence g : dodos) {
 			Proposition p = inputMap.get(g);
 			newInputs.add(new Integer(p.getId()));
@@ -287,10 +344,23 @@ public class LightPropNetMachine extends StateMachine {
 		}
 		Set<Integer> ups = symmDiff(newInputs,oldInputs);
 		updateNetState(ups);
-		if (diagnosticMode) {
-			printCurrentState();
-		}
+		long elapsed = System.currentTimeMillis()-start;
 		oldInputs = newInputs;
+
+		if (diagnosticMode) {
+			printd("Time for LPNM to update:",String.valueOf(elapsed));
+			printCurrentState();
+			printLegals();
+			//printNetState();
+		}
+
+
+	}
+
+	public void printLegals() {
+		for (Integer i : legals) {
+			printd("Legal:",propNet.findComponent(i).toString2());
+		}
 	}
 
 	public void printCurrentState() {
@@ -429,7 +499,7 @@ public class LightPropNetMachine extends StateMachine {
 				else {
 					s=s.concat("| . |");
 				}
-				s=s.concat(propNet.getComponentsS().get(i).toString2());
+				s=s.concat(propNet.getComponentsS().get(i).toString3());
 				System.out.println(s);
 			}
 		}
