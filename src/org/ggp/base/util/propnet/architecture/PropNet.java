@@ -3,6 +3,8 @@ package org.ggp.base.util.propnet.architecture;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -70,9 +72,12 @@ public final class PropNet
 {
 	/** References to every component in the PropNet. */
 	private final Set<Component> components;
+	private ArrayList<Component> componentsS;
+	private ArrayList<Integer> allCounts;
 
 	/** References to every Proposition in the PropNet. */
 	private final Set<Proposition> propositions;
+	private Set<Component> transitions;
 
 	/** References to every BaseProposition in the PropNet, indexed by name. */
 	private final Map<GdlSentence, Proposition> basePropositions;
@@ -97,6 +102,13 @@ public final class PropNet
 
 	/** A helper list of all of the roles. */
 	private final List<Role> roles;
+
+	private Map<Integer, Set<Component>> sorted;
+
+	private Map<Integer, Set<Integer>> outputMatrix;
+	private Map<Integer, Set<Integer>> inputMatrix;
+	private Map<Integer, Set<Integer>> transitionMatrix;
+
 
 	public void addComponent(Component c)
 	{
@@ -129,6 +141,15 @@ public final class PropNet
 	public List<Role> getRoles()
 	{
 	    return roles;
+	}
+
+	public List<GdlConstant> getRoleNames()
+	{
+		List<GdlConstant> ans = new ArrayList<GdlConstant>();
+		for (Role r : roles) {
+			ans.add(r.getName());
+		}
+	    return ans;
 	}
 
 	public Map<Proposition, Proposition> getLegalInputMap()
@@ -190,6 +211,12 @@ public final class PropNet
 	{
 		return goalPropositions;
 	}
+
+	public Set<Proposition> getGoalPropositions(Role r)
+	{
+		return goalPropositions.get(r);
+	}
+
 
 	/**
 	 * Getter method. A reference to the single, unique, InitProposition.
@@ -549,4 +576,139 @@ public final class PropNet
 		//c.removeAllInputs();
 		//c.removeAllOutputs();
 	}
+
+
+
+	// New methods
+	public void topoSort()
+	{
+		boolean flag = true;
+		Set<Component> active = new HashSet(components);
+		while (flag)
+		{
+			//System.out.println("toposort");
+			boolean alldone = true;
+			boolean res;
+			for (Component c : components) {
+				res = c.topoSort();
+				if (!res) {
+					alldone = false;
+				}
+			}
+			if (alldone) { flag = false; }
+		}
+
+	}
+	public void labelComponents()
+	{
+		transitions = new HashSet<Component>();
+		componentsS = new ArrayList<Component>(components);
+		Collections.sort(componentsS);
+		sorted = new HashMap<Integer, Set<Component>>();
+		HashSet currentSet = new HashSet<Component>();
+		int count = -1;
+		int maxlv = 0;
+		for (Component c : componentsS) {
+
+			count++;
+			c.setId(count);
+			if (c.getLevel() > maxlv) {
+				sorted.put(new Integer(maxlv),currentSet);
+				maxlv++;
+				currentSet = new HashSet<Component>();
+			}
+			currentSet.add(c);
+		}
+		sorted.put(new Integer(maxlv),currentSet);
+		inputMatrix = new HashMap<Integer, Set<Integer>>();
+		outputMatrix = new HashMap<Integer, Set<Integer>>();
+		transitionMatrix = new HashMap<Integer, Set<Integer>>();
+
+		for (Component c : componentsS) {
+			count++;
+			inputMatrix.put(new Integer(c.getId()), c.getInputIds());
+			if (c instanceof Transition) {
+				transitions.add(c);
+				c.setSp("TRANS");
+				transitionMatrix.put(new Integer(c.getId()),c.getTransOutputIds());
+			}
+			else {
+				outputMatrix.put(new Integer(c.getId()), c.getOutputIds());
+			}
+		}
+		for (GdlSentence g : basePropositions.keySet()) {
+			basePropositions.get(g).setSp("BASE");
+		}
+		for (GdlSentence g : inputPropositions.keySet()) {
+			inputPropositions.get(g).setSp("INPUT");
+		}
+		for (Role r : legalPropositions.keySet()) {
+			for (Component c : legalPropositions.get(r)) {
+				c.setSp("LEGAL");
+				c.setOwner(r.getName());
+			}
+		}
+		for (Role r : goalPropositions.keySet()) {
+			for (Component c : goalPropositions.get(r)) {
+				c.setSp("GOAL");
+				c.setOwner(r.getName());
+				c.setGoal(Integer.parseInt(((Proposition) c).getName().toString().split(" ")[3]));
+			}
+		}
+		initProposition.setSp("INITPROP");
+		terminalProposition.setSp("TERMINAL");
+
+		for (int i =0; i < 1; i++) {
+			allCounts = new ArrayList<Integer>();
+			for (Component c : componentsS) {
+				c.countOutputs(i);
+				allCounts.add(c.getOutcount(i));
+			}
+		}
+		for (Component c : componentsS) {
+			c.postProcess();
+		}
+
+	}
+	public Set<Component> getTransitions() {
+		return transitions;
+	}
+	public ArrayList<Component> getComponentsS() {
+		return componentsS;
+	}
+	public Component getProposition(GdlSentence g) {
+		return basePropositions.get(g);
+	}
+	public Component findComponent(int i) {
+		return componentsS.get(i);
+	}
+	public Map<Integer,Set<Component>> getSorted() {
+		return sorted;
+	}
+	public Map<Integer,Set<Integer>> getInputMatrix() {
+		return inputMatrix;
+	}
+	public Map<Integer,Set<Integer>> getOutputMatrix() {
+		return outputMatrix;
+	}
+	public Map<Integer,Set<Integer>> getTransitionMatrix() {
+		return transitionMatrix;
+	}
+	public Set<Integer> getBaseIds() {
+		Set<Integer> ans = new HashSet<Integer>();
+		for (Proposition p : basePropositions.values()) {
+			ans.add(p.getIdInt());
+		}
+		return ans;
+	}
+	public ArrayList<Integer> getAllCounts() {
+		return allCounts;
+	}
+
+	public void printComponents() {
+		for (Component c : componentsS) {
+			System.out.println("Component:".concat(c.toString3()).concat("++").concat(String.valueOf(c.getOutcount(0))));
+		}
+	}
+
 }

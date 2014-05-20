@@ -98,6 +98,7 @@ public abstract class Gamer implements Subject
 		this.roleName = roleName;
 	}
 
+
 	// ==== Observer Stuff ====
 	private final List<Observer> observers;
 	@Override

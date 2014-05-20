@@ -20,6 +20,7 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.query.ProverQueryBuilder;
 import org.ggp.base.util.statemachine.implementation.prover.result.ProverResultParser;
+//new
 
 
 public class ProverStateMachine extends StateMachine
@@ -42,7 +43,9 @@ public class ProverStateMachine extends StateMachine
 		prover = new AimaProver(description);
 		roles = Role.computeRoles(description);
 		initialState = computeInitialState();
+		setSeed(System.currentTimeMillis());
 	}
+
 
 	private MachineState computeInitialState()
 	{
@@ -119,5 +122,10 @@ public class ProverStateMachine extends StateMachine
 	public boolean isTerminal(MachineState state)
 	{
 		return prover.prove(ProverQueryBuilder.getTerminalQuery(), ProverQueryBuilder.getContext(state));
+	}
+
+	//new
+	public Prover getProver() {
+		return prover;
 	}
 }

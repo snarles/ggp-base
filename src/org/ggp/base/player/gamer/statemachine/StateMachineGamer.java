@@ -255,7 +255,9 @@ public abstract class StateMachineGamer extends Gamer
 			throw new AbortingException(e);
 		}
 	}
-
+	public void setSeed(long seed) {
+		getStateMachine().setSeed(seed);
+	}
     // Internal state about the current state of the state machine.
     private Role role;
     private MachineState currentState;

@@ -22,6 +22,8 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
  */
 public abstract class StateMachine
 {
+	protected long seed = 0;
+	protected Random rand = new Random(seed);
     // ============================================
     //          Stubs for implementations
     // ============================================
@@ -321,7 +323,7 @@ public abstract class StateMachine
     public Move getRandomMove(MachineState state, Role role) throws MoveDefinitionException
     {
         List<Move> legals = getLegalMoves(state, role);
-        return legals.get(new Random().nextInt(legals.size()));
+        return legals.get(rand.nextInt(legals.size()));
     }
 
     /**
@@ -393,4 +395,24 @@ public abstract class StateMachine
     		avgScores[j] /= repetitions;
     	}
     }
+    // new methods
+    public Set<GdlSentence> harvestDepthCharge(MachineState state,long timeout) throws TransitionDefinitionException, MoveDefinitionException {
+    	Map<GdlSentence,Integer> harvestedRelations = new HashMap<GdlSentence,Integer>();
+    	Integer one = new Integer(1);
+    	int counter = 0;
+        while(!isTerminal(state) && counter < 100 && System.currentTimeMillis() < timeout) {
+        	counter++;
+            state = getNextStateDestructively(state, getRandomJointMove(state));
+            Set<GdlSentence> contents = state.getContents();
+            for (GdlSentence g : contents) {
+                harvestedRelations.put(g,one);
+            }
+        }
+        return harvestedRelations.keySet();
+    }
+
+	public void setSeed(long newSeed) {
+		this.seed = newSeed;
+		this.rand = new Random(seed);
+	}
 }
