@@ -10,16 +10,19 @@ import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
-public class MCTSmk3 extends GrimgauntPredatorGamer {
+public class PersistantMCTS extends GrimgauntPredatorGamer {
 
 	protected static long Start = 0;
 	protected static long MaxTime = 0;
 	private MaxNode root;
+	private MinNode midstate;
 
 	@Override
 	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
-		//do nothing
+		root = null;
+		midstate = null;
+
 	}
 
 	private boolean timeout() {
@@ -45,7 +48,11 @@ public class MCTSmk3 extends GrimgauntPredatorGamer {
 		MaxTime = (timeout - Start);
 		System.out.println("\n========================\nNext Move:");
 		System.out.println("Round Time Limit: " + MaxTime + "ms");
-		root = new MaxNode(getCurrentState(), null);
+		if (root != null) {
+			root = midstate.updateRoot(getCurrentState());
+		} else {
+			root = new MaxNode(getCurrentState(), null);
+		}
 		MaxNode curr;
 		while (!timeout()) {
 			System.out.println("New iteration @ " + playclock() + "ms.");
@@ -88,6 +95,7 @@ public class MCTSmk3 extends GrimgauntPredatorGamer {
 					if (child.score > bestScore) {
 						bestMove = child.move;
 						bestScore = child.score;
+						midstate = child;
 					}
 				}
 			}
@@ -158,6 +166,14 @@ public class MCTSmk3 extends GrimgauntPredatorGamer {
 			this.score = 100;
 			this.children = null;
 			this.parent = parent;
+		}
+
+
+		public MaxNode updateRoot(MachineState currentState) {
+			for (MaxNode child: this.children) {
+				if (child.state.equals(currentState)) return child;
+			}
+			return null;
 		}
 
 
