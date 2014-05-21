@@ -156,6 +156,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 		netState[i0.intValue()] = true;
 		resolve();
 		goToNext();
+		resolve();
 		if (diagnosticMode) {
 			printCurrentState();
 		}
@@ -288,7 +289,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 			message = message.concat(String.valueOf(netState[i]));
 			//printd(":",message);
 		}
-		//printd("Resolved:",String.valueOf(transitions.size()));
+		printd("Resolved:",String.valueOf(transitions.size()));
 	}
 
 	//done
@@ -304,13 +305,16 @@ public class FuzzyPropNetMachine extends StateMachine {
 		}
 		netState = netStateNew;
 		currentState = getStateFromBase();
+		printd("NextState:",String.valueOf(legals.size()));
 	}
 
 	//done
 	//utility function used by getLegalMoves
 	public List<Integer> getLegalInputs(GdlConstant r) {
+		printd("RoleName:",r.toString());
 		List<Integer> ans = new ArrayList<Integer>();
 		for (Integer i : legals) {
+			printd("Owner:",propNet.findComponent(i.intValue()).getOwner().toString());
 			if (propNet.findComponent(i.intValue()).getOwner().equals(r)) {
 				ans.add(i);
 			}
@@ -323,6 +327,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 	public List<Move> getLegalMoves(MachineState state, Role role)
 	throws MoveDefinitionException {
 		setState(state);
+		printd("Role:",role.toString());
 		List<Integer> is = getLegalInputs(role.getName());
 		List<Move> ans = new ArrayList<Move>();
 		for (Integer i : is) {

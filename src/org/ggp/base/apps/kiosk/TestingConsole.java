@@ -13,6 +13,8 @@ import java.util.Set;
 
 import org.ggp.base.player.gamer.exception.MetaGamingException;
 import org.ggp.base.player.gamer.exception.MoveSelectionException;
+import org.ggp.base.player.gamer.statemachine.sample.FuzzyPropNetGamer;
+import org.ggp.base.player.gamer.statemachine.sample.SampleLegalGamer;
 import org.ggp.base.player.gamer.statemachine.sample.SampleMonteCarloGamer;
 import org.ggp.base.util.game.Game;
 import org.ggp.base.util.gdl.grammar.Gdl;
@@ -52,8 +54,10 @@ public class TestingConsole {
 	int currentTurn = -1;
 	boolean messageEachTurn = true;
 	PropNet pn = null;
+	List<Gdl> theRules = null;
+	Game theGame = null;
 
-	public static void main(String[] args) throws IOException, MoveDefinitionException, FileNotFoundException, TransitionDefinitionException, MetaGamingException, MoveSelectionException {
+	public static void main(String[] args)  {
 		TestingConsole tc = new TestingConsole();
 		tc.run();
 	}
@@ -70,8 +74,8 @@ public class TestingConsole {
 		//System.out.println(content);
 		String content2 = Game.preprocessRulesheet(content);
 		//System.out.println(content2);
-		Game theGame = Game.createEphemeralGame(content2);
-		List<Gdl> theRules = theGame.getRules();
+		theGame = Game.createEphemeralGame(content2);
+		theRules = theGame.getRules();
 		psm.initialize(theRules);
 		psm.setSeed(10);
 
@@ -107,16 +111,12 @@ public class TestingConsole {
 
 		paused(1);
 		randomAdvance();
-
-		paused(1);
+		randomAdvance();
+		randomAdvance();
+		randomAdvance();
 		randomAdvance();
 		paused(1);
-		randomAdvance();
-		paused(1);
-		randomAdvance();
-		paused(1);
-		randomAdvance();
-
+		run2();
 
 //		List<List<Move>> moves = null;
 //		try {
@@ -133,21 +133,12 @@ public class TestingConsole {
 
 	}
 
-	public void run3() throws IOException, MoveDefinitionException, FileNotFoundException, TransitionDefinitionException, MetaGamingException, MoveSelectionException {
-		Scanner scanman = new Scanner(new File(gameFile));
-		String content = scanman.useDelimiter("\\Z").next();
-		scanman.close();
-		//System.out.println(content);
-		String content2 = Game.preprocessRulesheet(content);
-		System.out.println(content2);
-		Game theGame = Game.createEphemeralGame(content2);
-		List<Gdl> theRules = theGame.getRules();
-		psm.initialize(theRules);
-
+	public void run2()  {
 		Match theMatch = new Match("test",-1,10,10,theGame);
-		SampleMonteCarloGamer sean = new SampleMonteCarloGamer();
+		Match theMatch2 = new Match("test",-1,10,10,theGame);
+		SampleLegalGamer sean = new SampleLegalGamer();
 		//sean.setName("sean");
-		SampleMonteCarloGamer charles = new SampleMonteCarloGamer();
+		FuzzyPropNetGamer charles = new FuzzyPropNetGamer();
 		//charles.setName("charles");
 
 		GdlConstant r = psm.getRoles().get(0).getName();
@@ -155,28 +146,45 @@ public class TestingConsole {
 		sean.setMatch(theMatch);
 		sean.setRoleName(r);
 
-		charles.setMatch(theMatch);
+		charles.setMatch(theMatch2);
 		charles.setRoleName(r2);
 
 		long receptionTime = System.currentTimeMillis();
-		sean.metaGame(receptionTime + 10000);
-		sean.setSeed(0);
-		charles.metaGame(System.currentTimeMillis() + 10000);
-		charles.setSeed(0);
-
+		try {
+			sean.metaGame(receptionTime + 10000);
+			sean.setSeed(0);
+			charles.metaGame(System.currentTimeMillis() + 10000);
+			charles.setSeed(0);
+		}
+		catch (MetaGamingException e) {
+			System.out.println("METAGMING ERROR");
+		}
 		long start;
 		long timelimit = 10000;
 		boolean gameOver = false;
-		boolean pauser = false;
+		boolean pauser = true;
+		paused(1);
 		while(!gameOver) {
 			start = System.currentTimeMillis();
-			GdlTerm move1 = sean.selectMove(start + timelimit);
+			GdlTerm move1 = null;
+			try {
+				move1 = sean.selectMove(start + timelimit);
+			} catch (MoveSelectionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			System.out.println(String.valueOf(System.currentTimeMillis() - start));
 			if (pauser) {
 				paused(1);
 			}
 			start = System.currentTimeMillis();
-			GdlTerm move2 = charles.selectMove(start+ timelimit);
+			GdlTerm move2 = null;
+			try {
+				move2 = charles.selectMove(start+ timelimit);
+			} catch (MoveSelectionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			System.out.println(String.valueOf(System.currentTimeMillis() - start));
 			MachineState state = sean.getCurrentState();
 			System.out.println(state.toString());
@@ -191,66 +199,13 @@ public class TestingConsole {
 			moves.add(move1);
 			moves.add(move2);
 			theMatch.appendMoves(moves);
+			theMatch2.appendMoves(moves);
+
 		}
 		//System.out.println(move.toString());
 	}
 
-	public void run2() throws IOException, MoveDefinitionException, FileNotFoundException, TransitionDefinitionException {
-		/**BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
-		System.out.println("Enter game file");
-		String gameFile = in.readLine();**/
-		//String gameFile = "/Users/snarles/github/ggp-base/games/gamemaster/connectfour.kif";
 
-		long start = 0;
-		long elapsed = 0;
-		String message = "";
-		List<Move> selectedMove;
-		MachineState newState;
-		List<List<Move>> legals;
-
-
-
-		/**BufferedReader gameRead = new BufferedReader(new FileReader(gameFile));
-		String text = gameRead.read();
-		System.out.println(text);**/
-		Scanner scanman = new Scanner(new File(gameFile));
-		String content = scanman.useDelimiter("\\Z").next();
-		scanman.close();
-		//System.out.println(content);
-		String content2 = Game.preprocessRulesheet(content);
-		System.out.println(content2);
-		Game theGame = Game.createEphemeralGame(content2);
-		List<Gdl> theRules = theGame.getRules();
-		//for (Gdl g : theRules) {
-		//	System.out.println(g.toString());
-		//}
-
-		start = System.currentTimeMillis();
-		//StateMachine psm = new ProverStateMachine();
-		//psm = new CachedStateMachine(psm);
-		psm.initialize(theRules);
-		elapsed = System.currentTimeMillis()-start;
-		message = "Time to initialize: ";
-		message = message.concat(String.valueOf(elapsed));
-		System.out.println(message);
-
-
-		//System.out.println(currentState.toString());
-		int nits = 1;
-		messageEachTurn= false; nits=5;
-		for (int j =1; j< 1+nits; j++) {
-			currentTurn = -1;
-			start = System.currentTimeMillis();
-			for (int i = 1; i < 15; i++) {
-				randomAdvance();
-			}
-			elapsed = System.currentTimeMillis()-start;
-
-			message = "Total time: ";
-			message = message.concat(String.valueOf(elapsed));
-			System.out.println(message);
-		}
-	}
 
 
 	public void printComponents() {
@@ -348,10 +303,25 @@ public class TestingConsole {
 		long start = System.currentTimeMillis();
 		List<List<Move>> moves = psm.getLegalJointMoves(currentState);
 		long elapsed = System.currentTimeMillis()-start;
-		String message = "Time to get moves: ";
+		String message = "PSM Time to get moves: ";
 		message = message.concat(String.valueOf(elapsed));
+
+		start = System.currentTimeMillis();
+		List<List<Move>> moves2 = lsm.getLegalJointMoves(currentState);
+		elapsed = System.currentTimeMillis()-start;
+		String message2 = "LSM Time to get moves: ";
+		message2 = message2.concat(String.valueOf(elapsed));
+
+
 		if (messageEachTurn) {
 			System.out.println(message);
+			for (List<Move> jointmoves : moves) {
+				printd("PSM Mv:",jointmoves.get(0).toString().concat(jointmoves.get(1).toString()),3);
+			}
+			System.out.println(message2);
+			for (List<Move> jointmoves : moves2) {
+				printd("LSM Mv:",jointmoves.get(0).toString().concat(jointmoves.get(1).toString()),3);
+			}
 		}
 		return moves;
 	}

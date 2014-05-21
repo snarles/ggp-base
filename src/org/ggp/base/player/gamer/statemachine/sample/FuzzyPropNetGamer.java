@@ -1,5 +1,8 @@
 package org.ggp.base.player.gamer.statemachine.sample;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,6 +26,7 @@ import org.ggp.base.util.statemachine.cache.CachedStateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
+import org.ggp.base.util.statemachine.implementation.propnet.FuzzyPropNetMachine;
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 /**
@@ -38,31 +42,40 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
  *
  * @author Sam Schreiber
  */
-public final class SampleMonteCarloGamer2 extends Gamer
+public final class FuzzyPropNetGamer extends Gamer
 {
+	boolean diagnosticMode = true;
+    // Internal state about the current state of the state machine.
+    private Role role;
+    private MachineState currentState;
+    private FuzzyPropNetMachine stateMachine;
 	/**
 	 * Employs a simple sample "Monte Carlo" algorithm.
 	 */
 
 	public Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
-	    StateMachine theMachine = getStateMachine();
+		//printd("*4*","");
+	    FuzzyPropNetMachine theMachine = getStateMachine();
 		long start = System.currentTimeMillis();
 		long finishBy = timeout - 1000;
 
+		//printd("*5*","");
 		List<Move> moves = theMachine.getLegalMoves(getCurrentState(), getRole());
+		printd("nmoves",String.valueOf(moves.size()));
+		//printd("*6*","");
 		Move selection = moves.get(0);
 		if (moves.size() > 1) {
-    		int[] moveTotalPoints = new int[moves.size()];
+    		double[] moveTotalPoints = new double[moves.size()];
     		int[] moveTotalAttempts = new int[moves.size()];
 
     		// Perform depth charges for each candidate move, and keep track
     		// of the total score and total attempts accumulated for each move.
-    		for (int i = 0; true; i = (i+1) % moves.size()) {
+    		for (int i = 0; i < moves.size(); i++) {
     		    if (System.currentTimeMillis() > finishBy)
     		        break;
 
-    		    int theScore = performDepthChargeFromMove(getCurrentState(), moves.get(i));
+    		    double theScore = performDepthChargeFromMove(getCurrentState(), moves.get(i));
     		    moveTotalPoints[i] += theScore;
     		    moveTotalAttempts[i] += 1;
     		}
@@ -92,11 +105,12 @@ public final class SampleMonteCarloGamer2 extends Gamer
 	}
 
 	private int[] depth = new int[1];
-	int performDepthChargeFromMove(MachineState theState, Move myMove) {
-	    StateMachine theMachine = getStateMachine();
+	double performDepthChargeFromMove(MachineState theState, Move myMove) {
+	    FuzzyPropNetMachine theMachine = getStateMachine();
 	    try {
-            MachineState finalState = theMachine.performDepthCharge(theMachine.getRandomNextState(theState, getRole(), myMove), depth);
-            return theMachine.getGoal(finalState, getRole());
+	    	printd("FPNG depth charge","");
+            MachineState finalState = theMachine.getRandomNextState(theState, getRole(), myMove);
+            return theMachine.getFuzzyGoal(finalState, getRole());
         } catch (Exception e) {
             e.printStackTrace();
             return 0;
@@ -128,7 +142,7 @@ public final class SampleMonteCarloGamer2 extends Gamer
 	 * Returns the state machine.  This is used for calculating the next state and other operations, such as computing
 	 * the legal moves for all players, whether states are terminal, and the goal values of terminal states.
 	 */
-	public final StateMachine getStateMachine()
+	public final FuzzyPropNetMachine getStateMachine()
 	{
 		return stateMachine;
 	}
@@ -157,7 +171,7 @@ public final class SampleMonteCarloGamer2 extends Gamer
      *
      * @param newStateMachine the new state machine
      */
-    protected final void switchStateMachine(StateMachine newStateMachine) {
+    protected final void switchStateMachine(FuzzyPropNetMachine newStateMachine) {
         try {
             MachineState newCurrentState = newStateMachine.getInitialState();
             Role newRole = newStateMachine.getRoleFromConstant(getRoleName());
@@ -227,16 +241,17 @@ public final class SampleMonteCarloGamer2 extends Gamer
 		try
 		{
 			stateMachine.doPerMoveWork();
-
+			//printd("*1*","");
 			List<GdlTerm> lastMoves = getMatch().getMostRecentMoves();
 			if (lastMoves != null)
 			{
+				//printd("*2*","");
 				List<Move> moves = new ArrayList<Move>();
 				for (GdlTerm sentence : lastMoves)
 				{
 					moves.add(stateMachine.getMoveFromTerm(sentence));
 				}
-
+				//printd("*3*","");
 				currentState = stateMachine.getNextState(currentState, moves);
 				getMatch().appendState(currentState.getContents());
 			}
@@ -294,10 +309,7 @@ public final class SampleMonteCarloGamer2 extends Gamer
 	public void setSeed(long seed) {
 		getStateMachine().setSeed(seed);
 	}
-    // Internal state about the current state of the state machine.
-    private Role role;
-    private MachineState currentState;
-    private StateMachine stateMachine;
+
 
     //paste from SampleGamer
 	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
@@ -319,8 +331,8 @@ public final class SampleMonteCarloGamer2 extends Gamer
 
 	// This is the default State Machine
 
-	public StateMachine getInitialStateMachine() {
-		return new CachedStateMachine(new ProverStateMachine());
+	public FuzzyPropNetMachine getInitialStateMachine() {
+		return new FuzzyPropNetMachine();
 	}
 
 	// This is the defaul Sample Panel
@@ -346,5 +358,26 @@ public final class SampleMonteCarloGamer2 extends Gamer
 	@Override
 	public void preview(Game g, long timeout) throws GamePreviewException {
 		// Sample gamers do no game previewing.
+	}
+
+	// diagnostic
+
+	public void paused() {
+		if (diagnosticMode) {
+			BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+			System.out.println("[PAUSED]");
+			try {
+				String gameFile = in.readLine();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public void printd(String s, String t) {
+		if (diagnosticMode) {
+			System.out.println(s.concat(t));
+		}
 	}
 }
