@@ -37,8 +37,8 @@ public class TestingConsole {
 	int printcount = 0;
 	int diaglevel = 10;
 	//Change this:
-	String dir = "C:/github/ggp-base/games/gamemaster/";
-	//String dir = "/Users/snarles/github/ggp-base/games/gamemaster/";
+	//String dir = "C:/github/ggp-base/games/gamemaster/";
+	String dir = "/Users/snarles/github/ggp-base/games/gamemaster/";
 	//String gamef = "alquerque.kif";
 	String gamef = "connectfour.kif";
 	//String gamef = "pentago.kif";
