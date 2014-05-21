@@ -50,7 +50,8 @@ public class FuzzyPropNetMachine extends StateMachine {
     private int pnSz = 0; //size of propnet
     private double fuzzy0 = 0.1;
     private double fuzzy1 = 0.9;
-    private double expP = 5.0; // exponent for log-sum-exp operation
+    private double expP = 100.0; // exponent for log-sum-exp operation
+    private double shrinkage = 1;
     Map<GdlSentence, Proposition> baseMap;
     private Set<Integer> legals;
     private Set<Integer> goals;
@@ -217,6 +218,35 @@ public class FuzzyPropNetMachine extends StateMachine {
 		currentState = state;
 	}
 
+	public double logsumexp(double[] x) {
+		double sum = 0;
+		double max = 0;
+		int sz = x.length;
+		for (int i = 0; i < sz; i++) {
+			if (x[i] > max) {
+				max = x[i];
+			}
+		}
+		for (int i = 0; i < sz; i++) {
+			sum = sum + Math.exp(sz * expP * (x[i]-max));
+		}
+		sum = Math.log(sum)/(sz * expP) + max;
+		if (sum < 0) {
+			sum = 0.0;
+		}
+		if (sum > 1) {
+			sum = 1.0;
+		}
+		double temp = 2*(sum - 0.5);
+		if (temp > 0) {
+			temp = Math.pow(temp,shrinkage);
+		}
+		else {
+			temp = -Math.pow(-temp,shrinkage);
+		}
+		sum = 0.5 + (temp/2.0);
+		return sum;
+	}
 	// done
 	// Given updates loaded in deltaState, propagates changes forward
 	public void resolve()
@@ -237,27 +267,27 @@ public class FuzzyPropNetMachine extends StateMachine {
 			Set<Integer> inputs = c.getInputIds();
 			if (c instanceof And) {
 				netState[i] = true;
-				double sum = 0.0;
+				double[] x=new double[inputs.size()];
+				int count = 0;
 				for (Integer i1 : inputs) {
 					netState[i] = netState[i] && netState[i1.intValue()];
-					sum = sum + Math.exp(expP * (1.0-fuzzyState[i1.intValue()]));
+					x[count] =  (1.0-fuzzyState[i1.intValue()]);
+					count++;
 				}
-				double ans = Math.log(sum)/expP;
-				if (ans > fuzzy1) {ans = fuzzy1;}
-				if (ans < fuzzy0) {ans = fuzzy0;}
-				fuzzyState[i] = 1.0-ans;
+				//double ans = sum;
+				fuzzyState[i] = 1.0 - logsumexp(x);
+				//fuzzyState[i] = ans;
 			}
 			else if (c instanceof Or) {
 				netState[i] = false;
-				double sum = 0.0;
+				double[] x=new double[inputs.size()];
+				int count = 0;
 				for (Integer i1 : inputs) {
 					netState[i] = netState[i] || netState[i1.intValue()];
-					sum = sum + Math.exp(expP * fuzzyState[i1.intValue()]);
+					x[count] = fuzzyState[i1.intValue()];
+					count++;
 				}
-				double ans = Math.log(sum)/expP;
-				if (ans > fuzzy1) {ans = fuzzy1;}
-				if (ans < fuzzy0) {ans = fuzzy0;}
-				fuzzyState[i] = ans;
+				fuzzyState[i] = logsumexp(x);
 			}
 			else if (c instanceof Not) {
 				for (Integer i1 : inputs) {
@@ -272,7 +302,6 @@ public class FuzzyPropNetMachine extends StateMachine {
 				}
 			}
 			if (netState[i]) {
-				fuzzyState[i] = fuzzy1;
 				String cc = c.getSp();
 				Integer ii = c.getIdInt();
 				if (cc =="LEGAL") {
@@ -289,7 +318,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 			message = message.concat(String.valueOf(netState[i]));
 			//printd(":",message);
 		}
-		printd("Resolved:",String.valueOf(transitions.size()));
+		//printd("Resolved:",String.valueOf(transitions.size()));
 	}
 
 	//done
@@ -305,16 +334,16 @@ public class FuzzyPropNetMachine extends StateMachine {
 		}
 		netState = netStateNew;
 		currentState = getStateFromBase();
-		printd("NextState:",String.valueOf(legals.size()));
+		//printd("NextState:",String.valueOf(legals.size()));
 	}
 
 	//done
 	//utility function used by getLegalMoves
 	public List<Integer> getLegalInputs(GdlConstant r) {
-		printd("RoleName:",r.toString());
+		//printd("RoleName:",r.toString());
 		List<Integer> ans = new ArrayList<Integer>();
 		for (Integer i : legals) {
-			printd("Owner:",propNet.findComponent(i.intValue()).getOwner().toString());
+			//printd("Owner:",propNet.findComponent(i.intValue()).getOwner().toString());
 			if (propNet.findComponent(i.intValue()).getOwner().equals(r)) {
 				ans.add(i);
 			}
@@ -327,7 +356,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 	public List<Move> getLegalMoves(MachineState state, Role role)
 	throws MoveDefinitionException {
 		setState(state);
-		printd("Role:",role.toString());
+		//printd("Role:",role.toString());
 		List<Integer> is = getLegalInputs(role.getName());
 		List<Move> ans = new ArrayList<Move>();
 		for (Integer i : is) {

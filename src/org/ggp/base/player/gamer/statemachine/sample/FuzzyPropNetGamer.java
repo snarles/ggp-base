@@ -30,17 +30,7 @@ import org.ggp.base.util.statemachine.implementation.propnet.FuzzyPropNetMachine
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 /**
- * SampleMonteCarloGamer is a simple state-machine-based Gamer. It will use a
- * pure Monte Carlo approach towards picking moves, doing simulations and then
- * choosing the move that has the highest expected score. It should be slightly
- * more challenging than the RandomGamer, while still playing reasonably fast.
- *
- * However, right now it isn't challenging at all. It's extremely mediocre, and
- * doesn't even block obvious one-move wins. This is partially due to the speed
- * of the default state machine (which is slow) and mostly due to the algorithm
- * assuming that the opponent plays completely randomly, which is inaccurate.
- *
- * @author Sam Schreiber
+ * Charles Zheng
  */
 public final class FuzzyPropNetGamer extends Gamer
 {
@@ -49,21 +39,18 @@ public final class FuzzyPropNetGamer extends Gamer
     private Role role;
     private MachineState currentState;
     private FuzzyPropNetMachine stateMachine;
-	/**
-	 * Employs a simple sample "Monte Carlo" algorithm.
-	 */
+
 
 	public Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
-		//printd("*4*","");
 	    FuzzyPropNetMachine theMachine = getStateMachine();
 		long start = System.currentTimeMillis();
 		long finishBy = timeout - 1000;
+		//stateMachine.printNetState();
+		//paused();
 
-		//printd("*5*","");
 		List<Move> moves = theMachine.getLegalMoves(getCurrentState(), getRole());
-		printd("nmoves",String.valueOf(moves.size()));
-		//printd("*6*","");
+
 		Move selection = moves.get(0);
 		if (moves.size() > 1) {
     		double[] moveTotalPoints = new double[moves.size()];
@@ -76,6 +63,7 @@ public final class FuzzyPropNetGamer extends Gamer
     		        break;
 
     		    double theScore = performDepthChargeFromMove(getCurrentState(), moves.get(i));
+    		    printd("Move:".concat(moves.get(i).toString())," : ".concat(String.valueOf(theScore)));
     		    moveTotalPoints[i] += theScore;
     		    moveTotalAttempts[i] += 1;
     		}
@@ -108,7 +96,7 @@ public final class FuzzyPropNetGamer extends Gamer
 	double performDepthChargeFromMove(MachineState theState, Move myMove) {
 	    FuzzyPropNetMachine theMachine = getStateMachine();
 	    try {
-	    	printd("FPNG depth charge","");
+	    	//printd("FPNG depth charge","");
             MachineState finalState = theMachine.getRandomNextState(theState, getRole(), myMove);
             return theMachine.getFuzzyGoal(finalState, getRole());
         } catch (Exception e) {
