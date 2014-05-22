@@ -69,6 +69,12 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
     private Set<Integer> transitions;
     private Set<Integer> currentInputs;
     private Set<Integer> allInputs;
+
+
+    private Set<Integer> legalsCache;
+    private Set<Integer> goalsCache;
+    private Set<Integer> transitionsCache;
+
     private Random bitRnd = new Random(0);
 
     //done
@@ -93,7 +99,7 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
     // builds propnet and initializes
     @Override
     public void initialize(List<Gdl> description) {
-    	setFuzzy(10000,5,false);
+    	setFuzzy(20,2,false);
     	long start = System.currentTimeMillis();
         try {
 			propNet = OptimizingPropNetFactory.create(description, false);
@@ -212,16 +218,26 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 
 	// used when exploring moves, etc, and to implement common random numbers
 	public void cacheStuff() {
+		//printCurrentState("Caching state: ");
 		netStateCache = Arrays.copyOf(netState, pnSz);
 		resolvedNetStateCache = Arrays.copyOf(resolvedNetState, pnSz);
 		bitwiseStateCache = new ArrayList<BigInteger>(bitwiseState);
 		currentStateCache = new MachineState(new HashSet<GdlSentence>(currentState.getContents()));
+		legalsCache = new HashSet<Integer>(legals);
+		goalsCache = new HashSet<Integer>(goals);
+		transitionsCache = new HashSet<Integer>(transitions);
+
 	}
 	public void loadCache() {
 		netState = Arrays.copyOf(netStateCache,pnSz);
 		resolvedNetState = Arrays.copyOf(resolvedNetStateCache, pnSz);
 		bitwiseState = new ArrayList<BigInteger>(bitwiseStateCache);
 		currentState = new MachineState(new HashSet<GdlSentence>(currentStateCache.getContents()));
+		legals = new HashSet<Integer>(legalsCache);
+		goals = new HashSet<Integer>(goalsCache);
+		transitions = new HashSet<Integer>(transitionsCache);
+
+		//printCurrentState("Loading cache: ");
 	}
 	public void setBitwiseMoves(List<Move> moves) {
 		setBitwiseInputs(movesToInts(moves));
@@ -302,19 +318,24 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 		return ans;
 	}
 
+	public void resolve() {
+		resolve(true);
+	}
 	// done
-	public void resolve()
+	public void resolve(boolean resetFuzzy)
 	{
 		fuzzyState = new double[pnSz];
         legals = new HashSet<Integer>();
         goals = new HashSet<Integer>();
         transitions = new HashSet<Integer>();
 		for (int i=0; i < pnSz; i++) {
-			if (netState[i]) {
-				bitwiseState.set(i,bitwiseOne());
-			}
-			else {
-				bitwiseState.set(i,bitwiseZero());
+			if (resetFuzzy) {
+				if (netState[i]) {
+					bitwiseState.set(i,bitwiseOne());
+				}
+				else {
+					bitwiseState.set(i,bitwiseZero());
+				}
 			}
 			//printd("Iteration:",String.valueOf(i));
 			Component c = propNet.findComponent(i);
@@ -382,13 +403,35 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 			Component c = propNet.findComponent(i1.intValue());
 			for (Integer i2 : c.getTransOutputIds()) {
 				//printd("On:",i2.toString());
-				netStateNew[i2.intValue()] = true;
+				int ii = i2.intValue();
+				netStateNew[ii] = true;
 			}
 		}
 		netState = netStateNew;
 		currentState = getStateFromBase();
 		//printd("NextState:",String.valueOf(legals.size()));
 	}
+
+	public void goToNextNR() {
+		boolean[] netStateNew = new boolean[pnSz];
+		for (Integer i1 : transitions) {
+			Component c = propNet.findComponent(i1.intValue());
+			for (Integer i2 : c.getTransOutputIds()) {
+				//printd("On:",i2.toString());
+				int ii = i2.intValue();
+				netStateNew[ii] = true;
+			}
+		}
+		for (int ii = 0; ii < pnSz; ii++) {
+			if (netState[ii] != netStateNew[ii]) {
+				bitwiseState.set(ii, bitwiseONE.andNot(bitwiseState.get(ii)));
+			}
+		}
+		netState = netStateNew;
+		currentState = getStateFromBase();
+		//printd("NextState:",String.valueOf(legals.size()));
+	}
+
 
 	//done
 	//utility function used by getLegalMoves
@@ -430,6 +473,16 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 		resolvedNetState = Arrays.copyOf(netState,pnSz);
 		goToNext();
 		resolve();
+		return currentState;
+	}
+
+	// get state no reset fuzzy
+	public MachineState getNextStateNR(List<Move> moves) throws TransitionDefinitionException {
+		setBitwiseMoves(moves);
+		resolve(false);
+		resolvedNetState = Arrays.copyOf(netState,pnSz);
+		goToNextNR();
+		resolve(false);
 		return currentState;
 	}
 
@@ -524,7 +577,7 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 
 	public void printNetState() {
 		if (diagnosticMode) {
-			DecimalFormat myFormatter = new DecimalFormat("0.00");
+			DecimalFormat myFormatter = new DecimalFormat("0.000000");
 			int count = 0;
 			for (int i = 0; i < propNet.getSize(); i++) {
 				String s = "";
@@ -575,6 +628,10 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 		if (diagnosticMode) {
 			System.out.println(s.concat(t));
 		}
+	}
+
+	public MachineState getCurrentState() {
+		return new MachineState(new HashSet<GdlSentence>(currentState.getContents()));
 	}
 
 

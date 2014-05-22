@@ -44,10 +44,10 @@ public class TestingConsole {
 	//String dir = "C:/github/ggp-base/games/gamemaster/";
 	String dir = "/Users/snarles/github/ggp-base/games/gamemaster/";
 	//String gamef = "alquerque.kif";
-	String gamef = "connectfour.kif";
+	//String gamef = "connectfour.kif";
 	//String gamef = "pentago.kif";
 	//String gamef = "skirmish.kif";
-	//String gamef = "tictactoe.kif";
+	String gamef = "tictactoe.kif";
 
 	String gameFile = dir.concat(gamef);
 	StateMachine psm = new ProverStateMachine();
