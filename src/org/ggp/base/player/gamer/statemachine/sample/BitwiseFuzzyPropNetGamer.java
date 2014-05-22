@@ -90,7 +90,7 @@ public final class BitwiseFuzzyPropNetGamer extends Gamer
 		}
 
 		long stop = System.currentTimeMillis();
-
+		printd("BFPG select move time:",String.valueOf(stop-start));
 		notifyObservers(new GamerSelectedMoveEvent(moves, selection, stop - start));
 		return selection;
 	}
