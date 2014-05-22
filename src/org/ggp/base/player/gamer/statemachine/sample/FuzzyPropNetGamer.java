@@ -60,7 +60,7 @@ public final class FuzzyPropNetGamer extends Gamer
     		// of the total score and total attempts accumulated for each move.
     		for (int i = 0; i < moves.size(); i++) {
     		    //if (System.currentTimeMillis() > finishBy) {break;}
-    			printd("FPNG state: ",getCurrentState().toString());
+    			//printd("FPNG state: ",getCurrentState().toString());
 
     		    double theScore = performDepthChargeFromMove(getCurrentState(), moves.get(i));
     		    //paused();theMachine.printNetState();paused();
@@ -100,8 +100,8 @@ public final class FuzzyPropNetGamer extends Gamer
 	    	//printd("FPNG depth charge","");
 	    	theMachine.setState(theState);
 	    	theMachine.synchState();
-	    	printd("Input state:",theState.toString());
-	    	theMachine.printCurrentState("from FPNG depth charge: ");
+	    	//printd("Input state:",theState.toString());
+	    	//theMachine.printCurrentState("from FPNG depth charge: ");
             MachineState finalState = theMachine.getRandomNextState(theState, getRole(), myMove);
             return theMachine.getFuzzyGoal(finalState, getRole());
         } catch (Exception e) {

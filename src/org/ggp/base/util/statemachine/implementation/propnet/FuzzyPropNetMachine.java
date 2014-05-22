@@ -49,7 +49,7 @@ public class FuzzyPropNetMachine extends StateMachine {
     private double[] fuzzyState = null;
     private MachineState currentState = null;
     private int pnSz = 0; //size of propnet
-    private double fuzzy0 = 0.00;
+    private double fuzzy0 = 0.4;
     private double fuzzy1 = 1.0 - fuzzy0;
     private double expP = 100.0; // exponent for log-sum-exp operation
     private double shrinkage = 1;

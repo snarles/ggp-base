@@ -169,7 +169,7 @@ public class TestingConsole {
 		long start;
 		long timelimit = 10000;
 		boolean gameOver = false;
-		boolean pauser = false;
+		boolean pauser = true;
 		printd("Start game","",3);
 		paused(1);
 		while(!gameOver) {
@@ -182,9 +182,6 @@ public class TestingConsole {
 				e.printStackTrace();
 			}
 			printd("sean sel:",String.valueOf(System.currentTimeMillis() - start),3);
-			if (pauser) {
-				paused(1);
-			}
 			start = System.currentTimeMillis();
 			GdlTerm move2 = null;
 			try {
@@ -194,9 +191,7 @@ public class TestingConsole {
 				e.printStackTrace();
 			}
 			printd("ch sel m:",String.valueOf(System.currentTimeMillis() - start),3);
-			if (pauser) {
-				paused(1);
-			}
+
 			//Move move1 = psm.getMoveFromTerm(sean.selectMove(System.currentTimeMillis() + 10000));
 			//Move move2 = psm.getMoveFromTerm(charles.selectMove(System.currentTimeMillis() + 10000));
 
@@ -212,6 +207,12 @@ public class TestingConsole {
 				moves2.add(psm.getMoveFromTerm(sentence));
 			}
 			try {
+				String s = "";
+				s = s.concat("Moves: ");
+				s = s.concat(moves2.get(0).toString());
+				s=s.concat(" , ");
+				s = s.concat(moves2.get(1).toString());
+				printd(s,"",2);
 				currentState = psm.getNextState(currentState, moves2);
 			} catch (TransitionDefinitionException e) {
 				// TODO Auto-generated catch block
@@ -219,7 +220,8 @@ public class TestingConsole {
 			}
 			printd("Official state: ",currentState.toString(),2);
 			gameOver = psm.isTerminal(currentState);
-
+			if (gameOver) {printd("GAME OVER","",1);}
+			if (pauser) paused(1);
 		}
 		//System.out.println(move.toString());
 	}
