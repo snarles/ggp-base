@@ -86,6 +86,7 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
     // builds propnet and initializes
     @Override
     public void initialize(List<Gdl> description) {
+    	setFuzzy(3,3,false);
     	long start = System.currentTimeMillis();
         try {
 			propNet = OptimizingPropNetFactory.create(description, false);
@@ -237,7 +238,6 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 		Set<GdlSentence> props1 = state.getContents();
 		netState = new boolean[pnSz];
 		fuzzyState = new double[pnSz];
-		Arrays.fill(fuzzyState, fuzzy0);
 		for (GdlSentence g : props1) {
 			Proposition p = baseMap.get(g);
 			netState[p.getId()] = true;
@@ -245,53 +245,6 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 		currentState = state;
 	}
 
-	public double logsumexp(double[] x) {
-		double sum = 0;
-		double max = 0;
-		int sz = x.length;
-		for (int i = 0; i < sz; i++) {
-			if (x[i] > max) {
-				max = x[i];
-			}
-		}
-		for (int i = 0; i < sz; i++) {
-			sum = sum + Math.exp(sz * expP * (x[i]-max));
-		}
-		sum = Math.log(sum)/(sz * expP) + max;
-		if (sum < 0) {
-			sum = 0.0;
-		}
-		if (sum > 1) {
-			sum = 1.0;
-		}
-		double temp = 2*(sum - 0.5);
-		if (temp > 0) {
-			temp = Math.pow(temp,shrinkage);
-		}
-		else {
-			temp = -Math.pow(-temp,shrinkage);
-		}
-		sum = 0.5 + (temp/2.0);
-		return sum;
-	}
-
-	public double fuzzyAnd(double[] x) {
-		double sum = 1.0;
-		int sz = x.length;
-		for (int i = 0; i < sz; i++) {
-			sum = sum * x[i];
-		}
-		return sum;
-	}
-
-	public double fuzzyOr(double[] x) {
-		double sum = 0.0;
-		int sz = x.length;
-		for (int i = 0; i < sz; i++) {
-			sum = 1.0-((1.0-sum) * (1.0-x[i]));
-		}
-		return sum;
-	}
 
 	public BigInteger bitwiseOne() {
 		BigInteger ans = bitwiseZERO;
@@ -312,16 +265,15 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 	public void resolve()
 	{
 		fuzzyState = new double[pnSz];
-		Arrays.fill(fuzzyState, fuzzy0);
         legals = new HashSet<Integer>();
         goals = new HashSet<Integer>();
         transitions = new HashSet<Integer>();
 		for (int i=0; i < pnSz; i++) {
 			if (netState[i]) {
-
+				bitwiseState.set(i,bitwiseOne());
 			}
 			else {
-
+				bitwiseState.set(i,bitwiseZero());
 			}
 			//printd("Iteration:",String.valueOf(i));
 			Component c = propNet.findComponent(i);
@@ -333,38 +285,30 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 			Set<Integer> inputs = c.getInputIds();
 			if (c instanceof And) {
 				netState[i] = true;
-				double[] x=new double[inputs.size()];
-				int count = 0;
 				for (Integer i1 : inputs) {
 					netState[i] = netState[i] && netState[i1.intValue()];
-					x[count] =  fuzzyState[i1.intValue()];
-					count++;
+					bitwiseState.set(i,bitwiseState.get(i).and(bitwiseState.get(i1.intValue())));
 				}
 				//double ans = sum;
-				fuzzyState[i] = fuzzyAnd(x);
 				//fuzzyState[i] = ans;
 			}
 			else if (c instanceof Or) {
 				netState[i] = false;
-				double[] x=new double[inputs.size()];
-				int count = 0;
 				for (Integer i1 : inputs) {
 					netState[i] = netState[i] || netState[i1.intValue()];
-					x[count] = fuzzyState[i1.intValue()];
-					count++;
+					bitwiseState.set(i,bitwiseState.get(i).or(bitwiseState.get(i1.intValue())));
 				}
-				fuzzyState[i] = fuzzyOr(x);
 			}
 			else if (c instanceof Not) {
 				for (Integer i1 : inputs) {
 					netState[i] = ! netState[i1.intValue()];
-					fuzzyState[i] = 1.0- fuzzyState[i1.intValue()];
+					bitwiseState.set(i,bitwiseONE.andNot(bitwiseState.get(i1.intValue())));
 				}
 			}
 			else {
 				for (Integer i1 : inputs) {
 					netState[i] = netState[i1.intValue()];
-					fuzzyState[i] = fuzzyState[i1.intValue()];
+					bitwiseState.set(i,bitwiseState.get(i1.intValue()));
 				}
 			}
 			if (netState[i]) {
@@ -381,6 +325,7 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 					transitions.add(ii);
 				}
 			}
+			fuzzyState[i] = bitwiseState.get(i).bitCount()/(double) nBits;
 			message = message.concat(" to ");
 			message = message.concat(String.valueOf(netState[i]));
 			//printd(":",message);
@@ -542,8 +487,9 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 					s=s.concat("| . |");
 				}
 				s=s.concat("=");
-				s=s.concat(myFormatter.format(fuzzyState[i]));
-				s=s.concat("=");
+				//s=s.concat(myFormatter.format(fuzzyState[i]));
+				//s=s.concat("=");
+				s = s.concat(bitwiseState.get(i).toString(2));
 				s=s.concat(propNet.getComponentsS().get(i).toString3());
 				System.out.println(s);
 				count++;
