@@ -41,8 +41,8 @@ public class TestingConsole {
 	int printcount = 0;
 	int diaglevel = 10;
 	//Change this:
-	String dir = "C:/github/ggp-base/games/gamemaster/";
-	//String dir = "/Users/snarles/github/ggp-base/games/gamemaster/";
+	//String dir = "C:/github/ggp-base/games/gamemaster/";
+	String dir = "/Users/snarles/github/ggp-base/games/gamemaster/";
 	//String gamef = "alquerque.kif";
 	String gamef = "connectfour.kif";
 	//String gamef = "pentago.kif";
@@ -65,21 +65,6 @@ public class TestingConsole {
 		tc.run();
 	}
 
-	public void run0() {
-		int nb = 14;
-    	byte[] zs = new byte[nb];
-    	byte one = Byte.MAX_VALUE;
-    	BigInteger bitwiseZERO = new BigInteger(zs);
-    	//Arrays.fill(zs,one);
-    	BigInteger bitwiseONE = bitwiseZERO;
-    	for (int i = 0; i < nb; i++) {
-    		bitwiseONE = bitwiseONE.flipBit(i);
-    	}
-    	printd("Zero:",String.valueOf(bitwiseZERO.bitCount()),0);
-    	printd("One:",String.valueOf(bitwiseONE.bitCount()),0);
-    	printd("One:",String.valueOf(bitwiseONE.longValue()),0);
-
-	}
 	public void run() {
 		String content = "";
 		try {

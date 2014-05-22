@@ -109,7 +109,7 @@ public final class PropNet
 	private Map<Integer, Set<Integer>> outputMatrix;
 	private Map<Integer, Set<Integer>> inputMatrix;
 	private Map<Integer, Set<Integer>> transitionMatrix;
-
+	private Set<Integer> allInputs = null;
 
 	public void addComponent(Component c)
 	{
@@ -583,6 +583,7 @@ public final class PropNet
 	// New methods
 	public void topoSort()
 	{
+		allInputs = new HashSet<Integer>();
 		boolean flag = true;
 		while (flag)
 		{
@@ -653,6 +654,9 @@ public final class PropNet
 				maxlv++;
 				currentSet = new HashSet<Component>();
 			}
+			if (c.getSp()=="INPUT") {
+				allInputs.add(c.getIdInt());
+			}
 			currentSet.add(c);
 		}
 		sorted.put(new Integer(maxlv),currentSet);
@@ -722,6 +726,9 @@ public final class PropNet
 		for (Component c : componentsS) {
 			System.out.println("Component:".concat(c.toString3()).concat("++").concat(String.valueOf(c.getOutcount(0))));
 		}
+	}
+	public Set<Integer> getAllInputs() {
+		return allInputs;
 	}
 
 }

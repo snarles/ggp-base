@@ -52,9 +52,15 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
     private double[] fuzzyState = null;
     private int nBits;
     private List<BigInteger> bitwiseState = null;
+
+    private List<BigInteger> bitwiseStateCache = null;
+    private boolean[] netStateCache = null;
+    private boolean[] resolvedNetStateCache = null;
+
     private BigInteger bitwiseONE;
     private BigInteger bitwiseZERO;
     private MachineState currentState = null;
+    private MachineState currentStateCache = null;
     private int pnSz = 0; //size of propnet
     private int approxOrder; //the higher this is, the less fuzzy the bitwise
     Map<GdlSentence, Proposition> baseMap;
@@ -62,6 +68,7 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
     private Set<Integer> goals;
     private Set<Integer> transitions;
     private Set<Integer> currentInputs;
+    private Set<Integer> allInputs;
     private Random bitRnd = new Random(0);
 
     //done
@@ -86,7 +93,7 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
     // builds propnet and initializes
     @Override
     public void initialize(List<Gdl> description) {
-    	setFuzzy(128,6,false);
+    	setFuzzy(10000,5,false);
     	long start = System.currentTimeMillis();
         try {
 			propNet = OptimizingPropNetFactory.create(description, false);
@@ -107,6 +114,7 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
         legals = new HashSet<Integer>();
         goals = new HashSet<Integer>();
         currentInputs = new HashSet<Integer>();
+        allInputs = propNet.getAllInputs();
 
         resolve();
         goToNext();
@@ -155,6 +163,12 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 		}
 		return sum;
 	}
+	public double getFuzzyTerminal(MachineState state) {
+		setState(state);
+		Proposition p = propNet.getTerminalProposition();
+		return fuzzyState[p.getId()];
+	}
+
 
 	//done
 	@Override
@@ -193,6 +207,33 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 		else {
 			setState0(state);
 			resolve();
+		}
+	}
+
+	// used when exploring moves, etc, and to implement common random numbers
+	public void cacheStuff() {
+		netStateCache = Arrays.copyOf(netState, pnSz);
+		resolvedNetStateCache = Arrays.copyOf(resolvedNetState, pnSz);
+		bitwiseStateCache = new ArrayList<BigInteger>(bitwiseState);
+		currentStateCache = new MachineState(new HashSet<GdlSentence>(currentState.getContents()));
+	}
+	public void loadCache() {
+		netState = Arrays.copyOf(netStateCache,pnSz);
+		resolvedNetState = Arrays.copyOf(resolvedNetStateCache, pnSz);
+		bitwiseState = new ArrayList<BigInteger>(bitwiseStateCache);
+		currentState = new MachineState(new HashSet<GdlSentence>(currentStateCache.getContents()));
+	}
+	public void setBitwiseMoves(List<Move> moves) {
+		setBitwiseInputs(movesToInts(moves));
+	}
+	public void setBitwiseInputs(Set<Integer> inputs) {
+		for (Integer i : allInputs) {
+			netState[i.intValue()] = false;
+			bitwiseState.set(i.intValue(),bitwiseZERO);
+		}
+		for (Integer i : inputs) {
+			netState[i.intValue()] = true;
+			bitwiseState.set(i.intValue(),bitwiseONE);
 		}
 	}
 
@@ -422,6 +463,20 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 			doeses.add(ProverQueryBuilder.toDoes(roles.get(i), moves.get(index)));
 		}
 		return doeses;
+	}
+
+	private Set<Integer> movesToInts(List<Move> moves) {
+		Map<Role, Integer> roleIndices = getRoleIndices();
+		Map<GdlSentence,Proposition> inputMap = propNet.getInputPropositions();
+		Set<Integer> newInputs = new HashSet<Integer>();
+		for (int i = 0; i < roles.size(); i++)
+		{
+			int index = roleIndices.get(roles.get(i));
+			GdlSentence g = ProverQueryBuilder.toDoes(roles.get(i), moves.get(index));
+			Proposition p = inputMap.get(g);
+			newInputs.add(new Integer(p.getId()));
+		}
+		return newInputs;
 	}
 
 	// predone

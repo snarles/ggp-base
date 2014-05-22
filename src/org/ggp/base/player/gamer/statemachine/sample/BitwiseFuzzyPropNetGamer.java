@@ -64,10 +64,11 @@ public final class BitwiseFuzzyPropNetGamer extends Gamer
     		    //if (System.currentTimeMillis() > finishBy) {break;}
     			//printd("FPNG state: ",getCurrentState().toString());
 
-    		    double theScore = performDepthChargeFromMove(getCurrentState(), moves.get(i));
+    		    double[] theScore = performDepthChargeFromMove(getCurrentState(), moves.get(i));
     		    //paused();theMachine.printNetState();paused();
-    		    printd("Move:".concat(moves.get(i).toString())," : ".concat(String.valueOf(theScore)));
-    		    moveTotalPoints[i] += theScore;
+    		    printd("Move:".concat(moves.get(i).toString())," : ".concat(String.valueOf(theScore[0])));
+    		    printd(" term:",String.valueOf(theScore[1]));
+    		    moveTotalPoints[i] += theScore[0];
     		    moveTotalAttempts[i] += 1;
     		}
 
@@ -95,8 +96,8 @@ public final class BitwiseFuzzyPropNetGamer extends Gamer
 		return selection;
 	}
 
-	private int[] depth = new int[1];
-	double performDepthChargeFromMove(MachineState theState, Move myMove) {
+	private double[] performDepthChargeFromMove(MachineState theState, Move myMove) {
+		double[] ans = {0.0,0.0};
 	    BitwiseFuzzyPropNetMachine theMachine = getStateMachine();
 	    try {
 	    	//printd("FPNG depth charge","");
@@ -105,11 +106,12 @@ public final class BitwiseFuzzyPropNetGamer extends Gamer
 	    	//printd("Input state:",theState.toString());
 	    	//theMachine.printCurrentState("from FPNG depth charge: ");
             MachineState finalState = theMachine.getRandomNextState(theState, getRole(), myMove);
-            return theMachine.getFuzzyGoal(finalState, getRole());
+            ans[0]= theMachine.getFuzzyGoal(finalState, getRole());
+            ans[1]= theMachine.getFuzzyTerminal(finalState);
         } catch (Exception e) {
             e.printStackTrace();
-            return 0;
         }
+	    return ans;
 	}
 	//paste from parent class
 
