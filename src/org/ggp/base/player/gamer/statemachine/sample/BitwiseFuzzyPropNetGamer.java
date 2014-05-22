@@ -374,7 +374,4 @@ public final class BitwiseFuzzyPropNetGamer extends Gamer
 		}
 	}
 
-	public static void main(String[] args) {
-		FuzzyPropNetGamer.java
-	}
 }
