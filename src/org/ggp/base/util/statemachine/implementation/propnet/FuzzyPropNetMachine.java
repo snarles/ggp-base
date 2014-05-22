@@ -162,6 +162,8 @@ public class FuzzyPropNetMachine extends StateMachine {
 		goToNext();
 		resolve();
 		if (diagnosticMode) {
+			//printd("initial: ",i0.toString());
+			//printNetState();
 			printCurrentState("FPNM Initialized state to ");
 		}
 	}
@@ -339,7 +341,8 @@ public class FuzzyPropNetMachine extends StateMachine {
 				else if (cc=="GOAL") {
 					goals.add(ii);
 				}
-				else if (cc=="TRANS") {
+				else if (cc=="zTRANS") {
+					//printd("trans added",ii.toString());
 					transitions.add(ii);
 				}
 			}

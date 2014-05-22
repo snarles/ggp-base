@@ -40,6 +40,7 @@ public final class Or extends Component
 	{
 		String s = getIdString();
 		s=s.concat("OR");
+		//s=s.concat("{").concat(getSp()).concat("}");
 		return s;
 	}
 

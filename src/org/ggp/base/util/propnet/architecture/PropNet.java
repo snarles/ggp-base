@@ -584,7 +584,6 @@ public final class PropNet
 	public void topoSort()
 	{
 		boolean flag = true;
-		Set<Component> active = new HashSet(components);
 		while (flag)
 		{
 			//System.out.println("toposort");
@@ -662,7 +661,6 @@ public final class PropNet
 		transitionMatrix = new HashMap<Integer, Set<Integer>>();
 
 		for (Component c : componentsS) {
-			count++;
 			inputMatrix.put(new Integer(c.getId()), c.getInputIds());
 			if (c instanceof Transition) {
 				transitions.add(c);

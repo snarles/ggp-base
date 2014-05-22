@@ -41,6 +41,7 @@ public final class And extends Component
 	{
 		String s = getIdString();
 		s=s.concat("AND");
+		//s=s.concat("{").concat(getSp()).concat("}");
 		return s;
 	}
 

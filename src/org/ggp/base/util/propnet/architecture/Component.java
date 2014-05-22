@@ -80,7 +80,7 @@ public abstract class Component implements Serializable, Comparable<Component>
 	    	}
     	}
     	for (Component output : outputs) {
-    		if (sp=="TRANS") {
+    		if (sp=="zTRANS") {
     			transOutputs.add(output);
     		}
     		else {
