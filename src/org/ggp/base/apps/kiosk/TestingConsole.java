@@ -39,8 +39,8 @@ public class TestingConsole {
 	int printcount = 0;
 	int diaglevel = 10;
 	//Change this:
-	//String dir = "C:/github/ggp-base/games/gamemaster/";
-	String dir = "/Users/snarles/github/ggp-base/games/gamemaster/";
+	String dir = "C:/github/ggp-base/games/gamemaster/";
+	//String dir = "/Users/snarles/github/ggp-base/games/gamemaster/";
 	//String gamef = "alquerque.kif";
 	String gamef = "connectfour.kif";
 	//String gamef = "pentago.kif";
@@ -148,6 +148,13 @@ public class TestingConsole {
 
 		charles.setMatch(theMatch2);
 		charles.setRoleName(r2);
+		psm.initialize(theRules);
+		currentState = psm.getInitialState();
+		printd("Official initial state: ",currentState.toString(),2);
+
+		printd("Sean is",r.toString(),3);
+		printd("Charles is",r2.toString(),3);
+
 
 		long receptionTime = System.currentTimeMillis();
 		try {
@@ -162,7 +169,8 @@ public class TestingConsole {
 		long start;
 		long timelimit = 10000;
 		boolean gameOver = false;
-		boolean pauser = true;
+		boolean pauser = false;
+		printd("Start game","",3);
 		paused(1);
 		while(!gameOver) {
 			start = System.currentTimeMillis();
@@ -173,7 +181,7 @@ public class TestingConsole {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			System.out.println(String.valueOf(System.currentTimeMillis() - start));
+			printd("sean sel:",String.valueOf(System.currentTimeMillis() - start),3);
 			if (pauser) {
 				paused(1);
 			}
@@ -185,13 +193,10 @@ public class TestingConsole {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			System.out.println(String.valueOf(System.currentTimeMillis() - start));
-			MachineState state = sean.getCurrentState();
-			System.out.println(state.toString());
+			printd("ch sel m:",String.valueOf(System.currentTimeMillis() - start),3);
 			if (pauser) {
 				paused(1);
 			}
-			gameOver = psm.isTerminal(state);
 			//Move move1 = psm.getMoveFromTerm(sean.selectMove(System.currentTimeMillis() + 10000));
 			//Move move2 = psm.getMoveFromTerm(charles.selectMove(System.currentTimeMillis() + 10000));
 
@@ -200,6 +205,20 @@ public class TestingConsole {
 			moves.add(move2);
 			theMatch.appendMoves(moves);
 			theMatch2.appendMoves(moves);
+
+			List<Move> moves2 = new ArrayList<Move>();
+			for (GdlTerm sentence : moves)
+			{
+				moves2.add(psm.getMoveFromTerm(sentence));
+			}
+			try {
+				currentState = psm.getNextState(currentState, moves2);
+			} catch (TransitionDefinitionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			printd("Official state: ",currentState.toString(),2);
+			gameOver = psm.isTerminal(currentState);
 
 		}
 		//System.out.println(move.toString());

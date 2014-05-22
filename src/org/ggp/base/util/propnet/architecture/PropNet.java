@@ -19,6 +19,7 @@ import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.gdl.grammar.GdlTerm;
 import org.ggp.base.util.logging.GamerLogger;
 import org.ggp.base.util.propnet.architecture.components.And;
+import org.ggp.base.util.propnet.architecture.components.Constant;
 import org.ggp.base.util.propnet.architecture.components.Not;
 import org.ggp.base.util.propnet.architecture.components.Or;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
@@ -594,9 +595,45 @@ public final class PropNet
 				if (!res) {
 					alldone = false;
 				}
+				if (c instanceof And) {
+					c.setSp("zzAND");
+				}
+				else if (c instanceof Or) {
+					c.setSp("zzOR");
+				}
+				else if (c instanceof Not) {
+					c.setSp("zzNOT");
+				}
+				else if (c instanceof Constant) {
+					c.setSp("zzCONS");
+				}
+				else if (c instanceof Transition) {
+					c.setSp("zTRANS");
+				}
 			}
 			if (alldone) { flag = false; }
 		}
+		for (GdlSentence g : basePropositions.keySet()) {
+			basePropositions.get(g).setSp("BASE");
+		}
+		for (GdlSentence g : inputPropositions.keySet()) {
+			inputPropositions.get(g).setSp("INPUT");
+		}
+		for (Role r : legalPropositions.keySet()) {
+			for (Component c : legalPropositions.get(r)) {
+				c.setSp("LEGAL");
+				c.setOwner(r.getName());
+			}
+		}
+		for (Role r : goalPropositions.keySet()) {
+			for (Component c : goalPropositions.get(r)) {
+				c.setSp("GOAL");
+				c.setOwner(r.getName());
+				c.setGoal(Integer.parseInt(((Proposition) c).getName().toString().split(" ")[3]));
+			}
+		}
+		initProposition.setSp("INITPROP");
+		terminalProposition.setSp("TERMINAL");
 
 	}
 	public void labelComponents()
@@ -629,34 +666,12 @@ public final class PropNet
 			inputMatrix.put(new Integer(c.getId()), c.getInputIds());
 			if (c instanceof Transition) {
 				transitions.add(c);
-				c.setSp("TRANS");
 				transitionMatrix.put(new Integer(c.getId()),c.getTransOutputIds());
 			}
 			else {
 				outputMatrix.put(new Integer(c.getId()), c.getOutputIds());
 			}
 		}
-		for (GdlSentence g : basePropositions.keySet()) {
-			basePropositions.get(g).setSp("BASE");
-		}
-		for (GdlSentence g : inputPropositions.keySet()) {
-			inputPropositions.get(g).setSp("INPUT");
-		}
-		for (Role r : legalPropositions.keySet()) {
-			for (Component c : legalPropositions.get(r)) {
-				c.setSp("LEGAL");
-				c.setOwner(r.getName());
-			}
-		}
-		for (Role r : goalPropositions.keySet()) {
-			for (Component c : goalPropositions.get(r)) {
-				c.setSp("GOAL");
-				c.setOwner(r.getName());
-				c.setGoal(Integer.parseInt(((Proposition) c).getName().toString().split(" ")[3]));
-			}
-		}
-		initProposition.setSp("INITPROP");
-		terminalProposition.setSp("TERMINAL");
 
 		for (int i =0; i < 1; i++) {
 			allCounts = new ArrayList<Integer>();

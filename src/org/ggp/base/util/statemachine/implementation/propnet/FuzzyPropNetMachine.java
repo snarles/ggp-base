@@ -44,12 +44,13 @@ public class FuzzyPropNetMachine extends StateMachine {
     /** The player roles */
     private List<Role> roles;
     private List<GdlConstant> roleNames;
+    private boolean[] resolvedNetState = null;
     private boolean[] netState = null;
     private double[] fuzzyState = null;
     private MachineState currentState = null;
     private int pnSz = 0; //size of propnet
-    private double fuzzy0 = 0.1;
-    private double fuzzy1 = 0.9;
+    private double fuzzy0 = 0.00;
+    private double fuzzy1 = 1.0 - fuzzy0;
     private double expP = 100.0; // exponent for log-sum-exp operation
     private double shrinkage = 1;
     Map<GdlSentence, Proposition> baseMap;
@@ -87,6 +88,7 @@ public class FuzzyPropNetMachine extends StateMachine {
         baseMap = propNet.getBasePropositions();
         roleNames = propNet.getRoleNames();
         netState = new boolean[pnSz];
+        resolvedNetState = netState;
         fuzzyState = new double[pnSz];
         legals = new HashSet<Integer>();
         goals = new HashSet<Integer>();
@@ -156,10 +158,11 @@ public class FuzzyPropNetMachine extends StateMachine {
 		Integer i0 = new Integer(propNet.getInitProposition().getId());
 		netState[i0.intValue()] = true;
 		resolve();
+		resolvedNetState = Arrays.copyOf(netState,pnSz);
 		goToNext();
 		resolve();
 		if (diagnosticMode) {
-			printCurrentState();
+			printCurrentState("FPNM Initialized state to ");
 		}
 	}
 
@@ -184,10 +187,14 @@ public class FuzzyPropNetMachine extends StateMachine {
 		List<GdlSentence> dodos = toDoes(moves);
 		Map<GdlSentence,Proposition> inputMap = propNet.getInputPropositions();
 		Set<Integer> newInputs = new HashSet<Integer>();
+		String s = "";
 		for (GdlSentence g : dodos) {
 			Proposition p = inputMap.get(g);
 			newInputs.add(new Integer(p.getId()));
+			s=s.concat(String.valueOf(p.getId()));
+			s=s.concat(", ");
 		}
+		//printd("Newinputs: ",s);
 		boolean flag = false;
 		if (!props1.equals(props2)) {
 			setState0(state);
@@ -199,6 +206,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 			}
 			for (Integer i : newInputs) {
 				netState[i.intValue()] = true;
+				//printd("Setting ",i.toString());
 			}
 			resolve();
 		}
@@ -247,8 +255,26 @@ public class FuzzyPropNetMachine extends StateMachine {
 		sum = 0.5 + (temp/2.0);
 		return sum;
 	}
+
+	public double fuzzyAnd(double[] x) {
+		double sum = 1.0;
+		int sz = x.length;
+		for (int i = 0; i < sz; i++) {
+			sum = sum * x[i];
+		}
+		return sum;
+	}
+
+	public double fuzzyOr(double[] x) {
+		double sum = 0.0;
+		int sz = x.length;
+		for (int i = 0; i < sz; i++) {
+			sum = 1.0-((1.0-sum) * (1.0-x[i]));
+		}
+		return sum;
+	}
+
 	// done
-	// Given updates loaded in deltaState, propagates changes forward
 	public void resolve()
 	{
 		fuzzyState = new double[pnSz];
@@ -257,6 +283,9 @@ public class FuzzyPropNetMachine extends StateMachine {
         goals = new HashSet<Integer>();
         transitions = new HashSet<Integer>();
 		for (int i=0; i < pnSz; i++) {
+			if (netState[i]) {
+				fuzzyState[i]=fuzzy1;
+			}
 			//printd("Iteration:",String.valueOf(i));
 			Component c = propNet.findComponent(i);
 			//printd("  comp:",c.toString3());
@@ -271,11 +300,11 @@ public class FuzzyPropNetMachine extends StateMachine {
 				int count = 0;
 				for (Integer i1 : inputs) {
 					netState[i] = netState[i] && netState[i1.intValue()];
-					x[count] =  (1.0-fuzzyState[i1.intValue()]);
+					x[count] =  fuzzyState[i1.intValue()];
 					count++;
 				}
 				//double ans = sum;
-				fuzzyState[i] = 1.0 - logsumexp(x);
+				fuzzyState[i] = fuzzyAnd(x);
 				//fuzzyState[i] = ans;
 			}
 			else if (c instanceof Or) {
@@ -287,7 +316,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 					x[count] = fuzzyState[i1.intValue()];
 					count++;
 				}
-				fuzzyState[i] = logsumexp(x);
+				fuzzyState[i] = fuzzyOr(x);
 			}
 			else if (c instanceof Not) {
 				for (Integer i1 : inputs) {
@@ -371,6 +400,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 	public MachineState getNextState(MachineState state, List<Move> moves)
 	throws TransitionDefinitionException {
 		setStateMove(state,moves);
+		resolvedNetState = Arrays.copyOf(netState,pnSz);
 		goToNext();
 		resolve();
 		return currentState;
@@ -383,8 +413,8 @@ public class FuzzyPropNetMachine extends StateMachine {
 		}
 	}
 
-	public void printCurrentState() {
-		printd("PropNetState:",currentState.toString());
+	public void printCurrentState(String s) {
+		printd("PropNetState:",s.concat(currentState.toString()));
 	}
 
 
@@ -450,8 +480,16 @@ public class FuzzyPropNetMachine extends StateMachine {
 	public void printNetState() {
 		if (diagnosticMode) {
 			DecimalFormat myFormatter = new DecimalFormat("0.00");
+			int count = 0;
 			for (int i = 0; i < propNet.getSize(); i++) {
 				String s = "";
+				if (resolvedNetState[i]) {
+					s=s.concat("[ X ]");
+				}
+				else {
+					s=s.concat("| . |");
+				}
+
 				if (netState[i]) {
 					s=s.concat("[ X ]");
 				}
@@ -463,10 +501,15 @@ public class FuzzyPropNetMachine extends StateMachine {
 				s=s.concat("=");
 				s=s.concat(propNet.getComponentsS().get(i).toString3());
 				System.out.println(s);
+				count++;
+				if (count % 500==0) {
+					paused();
+				}
 			}
 		}
 	}
 
+	@Override
 	public void paused() {
 		if (diagnosticMode) {
 			BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
@@ -480,6 +523,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 		}
 	}
 
+	@Override
 	public void printd(String s, String t) {
 		if (diagnosticMode) {
 			System.out.println(s.concat(t));

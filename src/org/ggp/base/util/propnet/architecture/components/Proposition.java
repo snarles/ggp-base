@@ -9,8 +9,7 @@ import org.ggp.base.util.propnet.architecture.Component;
 @SuppressWarnings("serial")
 public final class Proposition extends Component
 {
-	/** The name of the Proposition. */
-	private GdlSentence name;
+
 	/** The value of the Proposition. */
 	private boolean value;
 
@@ -26,15 +25,6 @@ public final class Proposition extends Component
 		this.value = false;
 	}
 
-	/**
-	 * Getter method.
-	 *
-	 * @return The name of the Proposition.
-	 */
-	public GdlSentence getName()
-	{
-		return name;
-	}
 
     /**
      * Setter method.

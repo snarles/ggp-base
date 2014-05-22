@@ -59,10 +59,10 @@ public final class FuzzyPropNetGamer extends Gamer
     		// Perform depth charges for each candidate move, and keep track
     		// of the total score and total attempts accumulated for each move.
     		for (int i = 0; i < moves.size(); i++) {
-    		    if (System.currentTimeMillis() > finishBy)
-    		        break;
+    		    //if (System.currentTimeMillis() > finishBy) {break;}
 
     		    double theScore = performDepthChargeFromMove(getCurrentState(), moves.get(i));
+    		    paused();theMachine.printNetState();paused();
     		    printd("Move:".concat(moves.get(i).toString())," : ".concat(String.valueOf(theScore)));
     		    moveTotalPoints[i] += theScore;
     		    moveTotalAttempts[i] += 1;
@@ -233,7 +233,7 @@ public final class FuzzyPropNetGamer extends Gamer
 			List<GdlTerm> lastMoves = getMatch().getMostRecentMoves();
 			if (lastMoves != null)
 			{
-				//printd("*2*","");
+				printd("FPNM **Updating match**","");
 				List<Move> moves = new ArrayList<Move>();
 				for (GdlTerm sentence : lastMoves)
 				{
