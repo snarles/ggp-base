@@ -3,6 +3,7 @@ package org.ggp.base.util.statemachine.implementation.propnet;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,23 +49,32 @@ public class FuzzyPropNetMachine extends StateMachine {
     private boolean[] netState = null;
     private double[] fuzzyState = null;
     private MachineState currentState = null;
+    private MachineState currentStateCache = null;
     private int pnSz = 0; //size of propnet
-    private double fuzzy0 = 0.4;
-    private double fuzzy1 = 1.0 - fuzzy0;
-    private double expP = 100.0; // exponent for log-sum-exp operation
-    private double shrinkage = 1;
+    //private double fuzzy0 = -1.0; // now as exponent
+    //private double fuzzy1 = Math.log(1.0-Math.exp(fuzzy0));
+    private double fuzzy0=0.1;
+    private double fuzzy1=1.0-fuzzy0;
     Map<GdlSentence, Proposition> baseMap;
     private Set<Integer> legals;
     private Set<Integer> goals;
     private Set<Integer> transitions;
     private Set<Integer> currentInputs;
+    private Set<Integer> legalsCache;
+    private Set<Integer> goalsCache;
+    private Set<Integer> transitionsCache;
+    private boolean[] netStateCache = null;
+    private boolean[] resolvedNetStateCache = null;
+    private double[] fuzzyStateCache = null;
+
+
+    private Set<Integer> allInputs;
 
     //done
     //sets the fuzzy values, also if you want to recalculate
     public void setFuzzy(double d, double e, boolean res) {
     	fuzzy0 = d;
     	fuzzy1 = 1.0-d;
-    	expP = e;
     	if (res) {
     		resolve();
     	}
@@ -141,7 +151,34 @@ public class FuzzyPropNetMachine extends StateMachine {
 		}
 		return sum;
 	}
+	public double getFuzzyTerminal(MachineState state) {
+		setState(state);
+		Proposition p = propNet.getTerminalProposition();
+		return fuzzyState[p.getId()];
+	}
+	// used when exploring moves, etc, and to implement common random numbers
+	public void cacheStuff() {
+		//printCurrentState("Caching state: ");
+		netStateCache = Arrays.copyOf(netState, pnSz);
+		fuzzyStateCache = Arrays.copyOf(fuzzyState,pnSz);
+		resolvedNetStateCache = Arrays.copyOf(resolvedNetState, pnSz);
+		currentStateCache = new MachineState(new HashSet<GdlSentence>(currentState.getContents()));
+		legalsCache = new HashSet<Integer>(legals);
+		goalsCache = new HashSet<Integer>(goals);
+		transitionsCache = new HashSet<Integer>(transitions);
 
+	}
+	public void loadCache() {
+		netState = Arrays.copyOf(netStateCache,pnSz);
+		resolvedNetState = Arrays.copyOf(resolvedNetStateCache, pnSz);
+		fuzzyState = Arrays.copyOf(fuzzyStateCache,pnSz);
+		currentState = new MachineState(new HashSet<GdlSentence>(currentStateCache.getContents()));
+		legals = new HashSet<Integer>(legalsCache);
+		goals = new HashSet<Integer>(goalsCache);
+		transitions = new HashSet<Integer>(transitionsCache);
+
+		//printCurrentState("Loading cache: ");
+	}
 	//done
 	@Override
 	public MachineState getInitialState() {
@@ -230,36 +267,6 @@ public class FuzzyPropNetMachine extends StateMachine {
 			netState[p.getId()] = true;
 		}
 		currentState = state;
-	}
-
-	public double logsumexp(double[] x) {
-		double sum = 0;
-		double max = 0;
-		int sz = x.length;
-		for (int i = 0; i < sz; i++) {
-			if (x[i] > max) {
-				max = x[i];
-			}
-		}
-		for (int i = 0; i < sz; i++) {
-			sum = sum + Math.exp(sz * expP * (x[i]-max));
-		}
-		sum = Math.log(sum)/(sz * expP) + max;
-		if (sum < 0) {
-			sum = 0.0;
-		}
-		if (sum > 1) {
-			sum = 1.0;
-		}
-		double temp = 2*(sum - 0.5);
-		if (temp > 0) {
-			temp = Math.pow(temp,shrinkage);
-		}
-		else {
-			temp = -Math.pow(-temp,shrinkage);
-		}
-		sum = 0.5 + (temp/2.0);
-		return sum;
 	}
 
 	public double fuzzyAnd(double[] x) {
@@ -542,5 +549,8 @@ public class FuzzyPropNetMachine extends StateMachine {
 		if (diagnosticMode) {
 			System.out.println(s.concat(t));
 		}
+	}
+	public MachineState getCurrentState() {
+		return new MachineState(new HashSet<GdlSentence>(currentState.getContents()));
 	}
 }
