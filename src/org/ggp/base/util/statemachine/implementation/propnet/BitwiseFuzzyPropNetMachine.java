@@ -86,7 +86,7 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
     // builds propnet and initializes
     @Override
     public void initialize(List<Gdl> description) {
-    	setFuzzy(3,3,false);
+    	setFuzzy(128,6,false);
     	long start = System.currentTimeMillis();
         try {
 			propNet = OptimizingPropNetFactory.create(description, false);
@@ -487,9 +487,10 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 					s=s.concat("| . |");
 				}
 				s=s.concat("=");
-				//s=s.concat(myFormatter.format(fuzzyState[i]));
-				//s=s.concat("=");
-				s = s.concat(bitwiseState.get(i).toString(2));
+				s=s.concat(myFormatter.format(fuzzyState[i]));
+				s=s.concat("=");
+				s = s.concat(bitwiseState.get(i).flipBit(nBits+1).toString(2));
+				s=s.concat("|");
 				s=s.concat(propNet.getComponentsS().get(i).toString3());
 				System.out.println(s);
 				count++;

@@ -26,6 +26,7 @@ import org.ggp.base.util.statemachine.cache.CachedStateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
+import org.ggp.base.util.statemachine.implementation.propnet.BitwiseFuzzyPropNetMachine;
 import org.ggp.base.util.statemachine.implementation.propnet.FuzzyPropNetMachine;
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
@@ -38,13 +39,14 @@ public final class BitwiseFuzzyPropNetGamer extends Gamer
     // Internal state about the current state of the state machine.
     private Role role;
     private MachineState currentState;
-    private FuzzyPropNetMachine stateMachine;
+    private BitwiseFuzzyPropNetMachine stateMachine;
 
 
 	public Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
-	    FuzzyPropNetMachine theMachine = getStateMachine();
-		long start = System.currentTimeMillis();
+	    BitwiseFuzzyPropNetMachine theMachine = getStateMachine();
+
+	    long start = System.currentTimeMillis();
 		long finishBy = timeout - 1000;
 		//stateMachine.printNetState();
 		//paused();
@@ -95,7 +97,7 @@ public final class BitwiseFuzzyPropNetGamer extends Gamer
 
 	private int[] depth = new int[1];
 	double performDepthChargeFromMove(MachineState theState, Move myMove) {
-	    FuzzyPropNetMachine theMachine = getStateMachine();
+	    BitwiseFuzzyPropNetMachine theMachine = getStateMachine();
 	    try {
 	    	//printd("FPNG depth charge","");
 	    	theMachine.setState(theState);
@@ -135,7 +137,7 @@ public final class BitwiseFuzzyPropNetGamer extends Gamer
 	 * Returns the state machine.  This is used for calculating the next state and other operations, such as computing
 	 * the legal moves for all players, whether states are terminal, and the goal values of terminal states.
 	 */
-	public final FuzzyPropNetMachine getStateMachine()
+	public final BitwiseFuzzyPropNetMachine getStateMachine()
 	{
 		return stateMachine;
 	}
@@ -164,7 +166,7 @@ public final class BitwiseFuzzyPropNetGamer extends Gamer
      *
      * @param newStateMachine the new state machine
      */
-    protected final void switchStateMachine(FuzzyPropNetMachine newStateMachine) {
+    protected final void switchStateMachine(BitwiseFuzzyPropNetMachine newStateMachine) {
         try {
             MachineState newCurrentState = newStateMachine.getInitialState();
             Role newRole = newStateMachine.getRoleFromConstant(getRoleName());
@@ -324,8 +326,8 @@ public final class BitwiseFuzzyPropNetGamer extends Gamer
 
 	// This is the default State Machine
 
-	public FuzzyPropNetMachine getInitialStateMachine() {
-		return new FuzzyPropNetMachine();
+	public BitwiseFuzzyPropNetMachine getInitialStateMachine() {
+		return new BitwiseFuzzyPropNetMachine();
 	}
 
 	// This is the defaul Sample Panel
