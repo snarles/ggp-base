@@ -174,7 +174,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 		Set<GdlSentence> props1 = currentState.getContents();
 		Set<GdlSentence> props2 = state.getContents();
 		if (props1.equals(props2)) {
-			return;
+			//printd("State match: not changing","");
 		}
 		else {
 			setState0(state);
@@ -198,7 +198,11 @@ public class FuzzyPropNetMachine extends StateMachine {
 		}
 		//printd("Newinputs: ",s);
 		boolean flag = false;
-		if (!props1.equals(props2)) {
+		if (props1.equals(props2)) {
+			//printd("State match: not changing","");
+		}
+		else {
+			printd("reset state ","");
 			setState0(state);
 			flag = true;
 		}
@@ -217,7 +221,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 	// done
 	// utility function used by SetState and SetStateMove
 	public void setState0(MachineState state) {
-		Set<GdlSentence> props1 = currentState.getContents();
+		Set<GdlSentence> props1 = state.getContents();
 		netState = new boolean[pnSz];
 		fuzzyState = new double[pnSz];
 		Arrays.fill(fuzzyState, fuzzy0);
@@ -375,9 +379,12 @@ public class FuzzyPropNetMachine extends StateMachine {
 		//printd("RoleName:",r.toString());
 		List<Integer> ans = new ArrayList<Integer>();
 		for (Integer i : legals) {
-			//printd("Owner:",propNet.findComponent(i.intValue()).getOwner().toString());
 			if (propNet.findComponent(i.intValue()).getOwner().equals(r)) {
 				ans.add(i);
+				//printd(" move:",propNet.findComponent(i.intValue()).toString2());
+			}
+			else {
+				//printd(" NOT move:",propNet.findComponent(i.intValue()).toString2());
 			}
 		}
 		return ans;
@@ -469,6 +476,10 @@ public class FuzzyPropNetMachine extends StateMachine {
 
 		}
 		return new MachineState(contents);
+	}
+
+	public void synchState() {
+		currentState = getStateFromBase();
 	}
 
 	public PropNet getPropNet()
