@@ -5,7 +5,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
@@ -59,9 +61,25 @@ public class TestingConsole {
 
 	public static void main(String[] args)  {
 		TestingConsole tc = new TestingConsole();
-		tc.run();
+		tc.run0();
+		//tc.run();
 	}
 
+	public void run0() {
+		int nb = 14;
+    	byte[] zs = new byte[nb];
+    	byte one = Byte.MAX_VALUE;
+    	BigInteger bitwiseZERO = new BigInteger(zs);
+    	//Arrays.fill(zs,one);
+    	BigInteger bitwiseONE = bitwiseZERO;
+    	for (int i = 0; i < nb; i++) {
+    		bitwiseONE = bitwiseONE.flipBit(i);
+    	}
+    	printd("Zero:",String.valueOf(bitwiseZERO.bitCount()),0);
+    	printd("One:",String.valueOf(bitwiseONE.bitCount()),0);
+    	printd("One:",String.valueOf(bitwiseONE.longValue()),0);
+
+	}
 	public void run() {
 		String content = "";
 		try {

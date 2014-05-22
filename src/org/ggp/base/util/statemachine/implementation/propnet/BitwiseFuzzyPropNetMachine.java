@@ -3,13 +3,16 @@ package org.ggp.base.util.statemachine.implementation.propnet;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.Random;
 import java.util.Set;
 
 import org.ggp.base.util.gdl.grammar.Gdl;
@@ -47,30 +50,39 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
     private boolean[] resolvedNetState = null;
     private boolean[] netState = null;
     private double[] fuzzyState = null;
+    private int nBits;
+    private List<BigInteger> bitwiseState = null;
+    private BigInteger bitwiseONE;
+    private BigInteger bitwiseZERO;
     private MachineState currentState = null;
     private int pnSz = 0; //size of propnet
-    private double fuzzy0 = 0.4;
-    private double fuzzy1 = 1.0 - fuzzy0;
-    private double expP = 100.0; // exponent for log-sum-exp operation
-    private double shrinkage = 1;
+    private int approxOrder; //the higher this is, the less fuzzy the bitwise
     Map<GdlSentence, Proposition> baseMap;
     private Set<Integer> legals;
     private Set<Integer> goals;
     private Set<Integer> transitions;
     private Set<Integer> currentInputs;
+    private Random bitRnd = new Random(0);
 
     //done
-    //sets the fuzzy values, also if you want to recalculate
-    public void setFuzzy(double d, double e, boolean res) {
-    	fuzzy0 = d;
-    	fuzzy1 = 1.0-d;
-    	expP = e;
+    //sets the bitwise nBits and probs, also if you want to recalculate
+    public void setFuzzy(int nb, int ao, boolean res) {
+    	nBits = nb;
+    	approxOrder = ao;
+    	byte[] zs = new byte[nb];
+    	bitwiseZERO = new BigInteger(zs);
+    	bitwiseONE = bitwiseZERO;
+    	for (int i = 0; i < nb; i++) {
+    		bitwiseONE = bitwiseONE.flipBit(i);
+    	}
     	if (res) {
     		resolve();
     	}
     }
 
-
+    public void setBitSeed(long s) {
+    	bitRnd.setSeed(s);
+    }
     // builds propnet and initializes
     @Override
     public void initialize(List<Gdl> description) {
@@ -90,6 +102,7 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
         netState = new boolean[pnSz];
         resolvedNetState = netState;
         fuzzyState = new double[pnSz];
+        bitwiseState = new ArrayList<BigInteger>(Collections.nCopies(pnSz,BigInteger.ZERO));
         legals = new HashSet<Integer>();
         goals = new HashSet<Integer>();
         currentInputs = new HashSet<Integer>();
@@ -280,6 +293,21 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
 		return sum;
 	}
 
+	public BigInteger bitwiseOne() {
+		BigInteger ans = bitwiseZERO;
+		for (int i = 0; i < approxOrder; i++) {
+			ans = ans.or(new BigInteger(nBits,bitRnd));
+		}
+		return ans;
+	}
+	public BigInteger bitwiseZero() {
+		BigInteger ans = bitwiseONE;
+		for (int i = 0; i < approxOrder; i++) {
+			ans = ans.and(new BigInteger(nBits,bitRnd));
+		}
+		return ans;
+	}
+
 	// done
 	public void resolve()
 	{
@@ -290,7 +318,10 @@ public class BitwiseFuzzyPropNetMachine extends StateMachine {
         transitions = new HashSet<Integer>();
 		for (int i=0; i < pnSz; i++) {
 			if (netState[i]) {
-				fuzzyState[i]=fuzzy1;
+
+			}
+			else {
+
 			}
 			//printd("Iteration:",String.valueOf(i));
 			Component c = propNet.findComponent(i);
