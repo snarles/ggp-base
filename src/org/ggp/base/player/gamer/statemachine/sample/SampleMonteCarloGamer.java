@@ -31,6 +31,7 @@ public final class SampleMonteCarloGamer extends SampleGamer
 	@Override
 	public Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
+		printd("sean current state:", getCurrentState().toString());
 	    StateMachine theMachine = getStateMachine();
 		long start = System.currentTimeMillis();
 		long finishBy = timeout - 1000;
@@ -43,11 +44,10 @@ public final class SampleMonteCarloGamer extends SampleGamer
 
     		// Perform depth charges for each candidate move, and keep track
     		// of the total score and total attempts accumulated for each move.
+    		int count = 0;
     		for (int i = 0; true; i = (i+1) % moves.size()) {
-    		    if (System.currentTimeMillis() > finishBy)
-    		        break;
-
-    		    int theScore = performDepthChargeFromMove(getCurrentState(), moves.get(i));
+    		    if (System.currentTimeMillis() > finishBy) break;
+    			int theScore = performDepthChargeFromMove(getCurrentState(), moves.get(i));
     		    moveTotalPoints[i] += theScore;
     		    moveTotalAttempts[i] += 1;
     		}
@@ -87,4 +87,5 @@ public final class SampleMonteCarloGamer extends SampleGamer
             return 0;
         }
 	}
+
 }

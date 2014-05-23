@@ -85,36 +85,36 @@ public class FuzzyPropNetMachine extends StateMachine {
     }
 
     public FuzzyPropNetMachine(PropNet propNet0, List<Role> roles0,List<GdlConstant> roleNames0,
-    		boolean[] resolvedNetState0, boolean[] netState0, double[] fuzzyState0, MachineState currentState0,
-    		MachineState currentStateCache0, int pnSz0, double fuzzy00, double fuzzy10, Map<GdlSentence, Proposition> baseMap0,
-    		Set<Integer> legals0, Set<Integer> goals0, Set<Integer> transitions0, Set<Integer> allInputs0, Set<Integer> currentInputs0,
-    		Set<Integer> legalsCache0, Set<Integer> goalsCache0, Set<Integer> transitionsCache0,
-    		boolean[] netStateCache0, boolean[] resolvedNetStateCache0, double[] fuzzyStateCache0)
-    {
-    	propNet = propNet0;
-    	roles = new ArrayList<Role>(roles0);
-    	roleNames = new ArrayList<GdlConstant>(roleNames0);
-    	resolvedNetState = Arrays.copyOf(resolvedNetState0,pnSz0);
-    	netState = Arrays.copyOf(netState0,pnSz0);
-    	fuzzyState = Arrays.copyOf(fuzzyState0,pnSz0);
-    	currentState = new MachineState(new HashSet<GdlSentence>(currentState0.getContents()));
-    	currentStateCache = new MachineState(new HashSet<GdlSentence>(currentStateCache0.getContents()));
-    	pnSz = pnSz0;
-    	fuzzy0 = fuzzy00;
-    	fuzzy1 = fuzzy10;
-    	baseMap = baseMap0;
-    	legals = new HashSet<Integer>(legals0);
-    	goals = new HashSet<Integer>(goals0);
-    	transitions = new HashSet<Integer>(transitions0);
-    	currentInputs = new HashSet<Integer>(currentInputs0);
-    	allInputs = allInputs0;
-    	legalsCache = new HashSet<Integer>(legalsCache0);
-    	goalsCache = new HashSet<Integer>(goalsCache0);
-    	transitionsCache = new HashSet<Integer>(transitionsCache0);
-    	resolvedNetStateCache = Arrays.copyOf(resolvedNetStateCache0,pnSz0);
-    	netStateCache = Arrays.copyOf(netStateCache0,pnSz0);
-    	fuzzyStateCache = Arrays.copyOf(fuzzyStateCache0,pnSz0);
-    }
+			boolean[] resolvedNetState0, boolean[] netState0, double[] fuzzyState0, MachineState currentState0,
+			MachineState currentStateCache0, int pnSz0, double fuzzy00, double fuzzy10, Map<GdlSentence, Proposition> baseMap0,
+			Set<Integer> legals0, Set<Integer> goals0, Set<Integer> transitions0, Set<Integer> allInputs0, Set<Integer> currentInputs0,
+			Set<Integer> legalsCache0, Set<Integer> goalsCache0, Set<Integer> transitionsCache0,
+			boolean[] netStateCache0, boolean[] resolvedNetStateCache0, double[] fuzzyStateCache0)
+	{
+		propNet = propNet0;
+		roles = new ArrayList<Role>(roles0);
+		roleNames = new ArrayList<GdlConstant>(roleNames0);
+		resolvedNetState = Arrays.copyOf(resolvedNetState0,pnSz0);
+		netState = Arrays.copyOf(netState0,pnSz0);
+		fuzzyState = Arrays.copyOf(fuzzyState0,pnSz0);
+		currentState = new MachineState(new HashSet<GdlSentence>(currentState0.getContents()));
+		currentStateCache = new MachineState(new HashSet<GdlSentence>(currentStateCache0.getContents()));
+		pnSz = pnSz0;
+		fuzzy0 = fuzzy00;
+		fuzzy1 = fuzzy10;
+		baseMap = baseMap0;
+		legals = new HashSet<Integer>(legals0);
+		goals = new HashSet<Integer>(goals0);
+		transitions = new HashSet<Integer>(transitions0);
+		currentInputs = new HashSet<Integer>(currentInputs0);
+		allInputs = allInputs0;
+		legalsCache = new HashSet<Integer>(legalsCache0);
+		goalsCache = new HashSet<Integer>(goalsCache0);
+		transitionsCache = new HashSet<Integer>(transitionsCache0);
+		resolvedNetStateCache = Arrays.copyOf(resolvedNetStateCache0,pnSz0);
+		netStateCache = Arrays.copyOf(netStateCache0,pnSz0);
+		fuzzyStateCache = Arrays.copyOf(fuzzyStateCache0,pnSz0);
+	}
 
     public FuzzyPropNetMachine duplicate() {
     	return new FuzzyPropNetMachine(propNet, roles,roleNames,
@@ -459,7 +459,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 		resolvedNetState = Arrays.copyOf(netState,pnSz);
 		goToNext();
 		resolve();
-		return currentState;
+		return new MachineState(new HashSet<GdlSentence>(currentState.getContents()));
 	}
 
 

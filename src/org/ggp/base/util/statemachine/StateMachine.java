@@ -25,9 +25,14 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
  */
 public abstract class StateMachine
 {
-	boolean diagnosticMode = true;
+	boolean diagnosticMode = false;
+	protected boolean fullDiagnosticMode = false;
 	protected long seed = 0;
 	protected Random rand = new Random(seed);
+    public void setFullDiagnostic(boolean b) {
+    	fullDiagnosticMode = b;
+    }
+
     // ============================================
     //          Stubs for implementations
     // ============================================

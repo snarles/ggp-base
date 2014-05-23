@@ -1,5 +1,8 @@
 package org.ggp.base.player.gamer.statemachine;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,6 +35,7 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
  */
 public abstract class StateMachineGamer extends Gamer
 {
+	boolean diagnosticMode = true;
     // =====================================================================
     // First, the abstract methods which need to be overriden by subclasses.
     // These determine what state machine is used, what the gamer does during
@@ -202,8 +206,11 @@ public abstract class StateMachineGamer extends Gamer
 				{
 					moves.add(stateMachine.getMoveFromTerm(sentence));
 				}
-
+				printd("State before select:", currentState.toString());
+				//stateMachine.setFullDiagnostic(true);
 				currentState = stateMachine.getNextState(currentState, moves);
+				//stateMachine.setFullDiagnostic(false);
+				printd("State after select:", currentState.toString());
 				getMatch().appendState(currentState.getContents());
 			}
 
@@ -231,6 +238,7 @@ public abstract class StateMachineGamer extends Gamer
 				}
 
 				currentState = stateMachine.getNextState(currentState, moves);
+
 				getMatch().appendState(currentState.getContents());
 				getMatch().markCompleted(stateMachine.getGoals(currentState));
 			}
@@ -262,4 +270,9 @@ public abstract class StateMachineGamer extends Gamer
     private Role role;
     private MachineState currentState;
     private StateMachine stateMachine;
+	public void printd(String s, String t) {
+		if (diagnosticMode) {
+			System.out.println(s.concat(t));
+		}
+	}
 }

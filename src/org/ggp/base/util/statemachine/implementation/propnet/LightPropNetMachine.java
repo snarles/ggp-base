@@ -36,7 +36,8 @@ import org.ggp.base.util.statemachine.implementation.prover.query.ProverQueryBui
 @SuppressWarnings("unused")
 public class LightPropNetMachine extends StateMachine {
 	private boolean diagnosticMode = true;
-    private PropNet propNet;
+
+	private PropNet propNet;
     private List<Role> roles;
     private List<GdlConstant> roleNames;
     private boolean[] netState = null;
@@ -56,11 +57,6 @@ public class LightPropNetMachine extends StateMachine {
 
 
 
-    /**
-     * Initializes the PropNetStateMachine. You should compute the topological
-     * ordering here. Additionally you may compute the initial state here, at
-     * your discretion.
-     */
     @Override
     public void initialize(List<Gdl> description) {
     	long start = System.currentTimeMillis();
@@ -104,7 +100,7 @@ public class LightPropNetMachine extends StateMachine {
 	public boolean isTerminal(MachineState state) {
 		setState(state);
 		int i0 = propNet.getTerminalProposition().getId();
-		// TODO: Compute whether the MachineState is terminal.
+		//printCurrentState("Terminal? ".concat(String.valueOf(netState[i0])));
 		return netState[i0];
 	}
 
@@ -145,8 +141,8 @@ public class LightPropNetMachine extends StateMachine {
 			printCurrentState("LPNM Initialized state to ");
 		}
 		//printNetState();
-		currentState = getStateFromBase();
-		return currentState;
+		getStateFromBase();
+		return new MachineState(new HashSet<GdlSentence>(currentState.getContents()));
 	}
 
 	public void setState(MachineState state) {
@@ -180,7 +176,7 @@ public class LightPropNetMachine extends StateMachine {
 			//printd("State match: not changing","");
 		}
 		else {
-			printd("reset state ","");
+			//printd("reset state ","");
 			setState0(state);
 			flag = true;
 		}
@@ -203,6 +199,7 @@ public class LightPropNetMachine extends StateMachine {
 	}
 	// utility function used by SetState and SetStateMove
 	public void setState0(MachineState state) {
+		//printCurrentState("changing state from :");
 		Set<GdlSentence> props2 = state.getContents();
 		Set<GdlSentence> props1 = currentState.getContents();
 		for (GdlSentence g : props2) {
@@ -223,15 +220,14 @@ public class LightPropNetMachine extends StateMachine {
 				checkTrue.add(p.getIdInt());
 			}
 		}
-		currentState = state;
+		getStateFromBase();
+		//printCurrentState("changing state to :");
 	}
 
 	// Given updates loaded in deltaState, propagates changes forward
 	public void resolve()
 	{
-        legals = new HashSet<Integer>();
-        goals = new HashSet<Integer>();
-        transitions = new HashSet<Integer>();
+		if (fullDiagnosticMode) printNetState();
         while (deltaState.size() > 0) {
         	Integer ii = deltaState.remove();
 			int i = ii.intValue();
@@ -302,10 +298,13 @@ public class LightPropNetMachine extends StateMachine {
 				for (Integer i2 : outputs) {
 					deltaState.add(i2);
 				}
-				//printd(" comp: ",c.toString3());
-				//printd(":",message);
+				if (fullDiagnosticMode) {
+				  printd(" comp: ",c.toString3());
+				  printd(":",message);
+				}
 			}
 		}
+        if (fullDiagnosticMode) { paused(); }
 		//printd("Resolved:",String.valueOf(deltaTrans.size()));
 	}
 
@@ -341,15 +340,19 @@ public class LightPropNetMachine extends StateMachine {
 		for (Integer i1 : checkFalse) {
 			if (! netState[i1.intValue()]) {
 				deltaState.add(i1);
+				trueBase.remove(i1);
 			}
 		}
 		for (Integer i1 : checkTrue) {
 			if (netState[i1.intValue()]) {
 				deltaState.add(i1);
+				trueBase.add(i1);
 			}
 		}
+		checkTrue = new HashSet<Integer>();
+		checkFalse = new HashSet<Integer>();
 		deltaTrans = new HashSet<Integer>();
-		currentState = getStateFromBase();
+		getStateFromBase();
 	}
 
 	//done
@@ -373,13 +376,20 @@ public class LightPropNetMachine extends StateMachine {
 	@Override
 	public List<Move> getLegalMoves(MachineState state, Role role)
 	throws MoveDefinitionException {
+		String record = currentState.toString().concat(String.valueOf(isTerminal(currentState)));
 		setState(state);
-		//printd("Role:",role.toString());
 		List<Integer> is = getLegalInputs(role.getName());
 		List<Move> ans = new ArrayList<Move>();
 		for (Integer i : is) {
 			Proposition p = (Proposition) propNet.findComponent(i);
 			ans.add(getMoveFromProposition(p));
+		}
+		if (ans.size()==0) {
+			printd(record,"");
+			printCurrentState("Get Legal moves for");
+			printLegals();
+			printd("Is terminal? ", String.valueOf(isTerminal(state)));
+			paused();
 		}
 		return ans;
 	}
@@ -391,7 +401,7 @@ public class LightPropNetMachine extends StateMachine {
 		setStateMove(state,moves);
 		goToNext();
 		resolve();
-		return currentState;
+		return new MachineState(new HashSet<GdlSentence>(currentState.getContents()));
 	}
 
 
@@ -407,8 +417,8 @@ public class LightPropNetMachine extends StateMachine {
 	}
 
 	public MachineState getCurrentState() {
-		currentState = getStateFromBase();
-		return currentState;
+		getStateFromBase();
+		return new MachineState(new HashSet<GdlSentence>(currentState.getContents()));
 	}
 
 	/* Already implemented for you */
@@ -465,12 +475,6 @@ public class LightPropNetMachine extends StateMachine {
 		return Integer.parseInt(constant.toString());
 	}
 
-	/**
-	 * A Naive implementation that computes a PropNetMachineState
-	 * from the true BasePropositions.  This is correct but slower than more advanced implementations
-	 * You need not use this method!
-	 * @return PropNetMachineState
-	 */
 	public MachineState getStateFromBase()
 	{
 		Set<GdlSentence> contents = new HashSet<GdlSentence>();
@@ -481,6 +485,19 @@ public class LightPropNetMachine extends StateMachine {
 		}
 		currentState =new MachineState(contents);
 		return currentState;
+	}
+	public MachineState getStateFromBase0()
+	{
+		Set<GdlSentence> contents = new HashSet<GdlSentence>();
+		for (Proposition p : propNet.getBasePropositions().values())
+		{
+			int i = p.getId();
+			if (netState[i])
+			{
+				contents.add(p.getName());
+			}
+		}
+		return new MachineState(contents);
 	}
 
 	public PropNet getPropNet()
@@ -511,6 +528,9 @@ public class LightPropNetMachine extends StateMachine {
 				s=s.concat(propNet.getComponentsS().get(i).toString3());
 				System.out.println(s);
 			}
+			printd("CheckTrue: ",checkTrue.toString());
+			printd("CheckFalse: ",checkTrue.toString());
+			printd("deltraTrans: ",deltaTrans.toString());
 		}
 	}
 

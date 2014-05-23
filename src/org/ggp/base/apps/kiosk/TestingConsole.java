@@ -140,7 +140,7 @@ public class TestingConsole {
 	public void run2()  {
 		Match theMatch = new Match("test",-1,10,10,theGame);
 		Match theMatch2 = new Match("test",-1,10,10,theGame);
-		SampleLegalGamer sean = new SampleLegalGamer();
+		SampleMonteCarloGamer sean = new SampleMonteCarloGamer();
 		//sean.setName("sean");
 		FuzzyPropNetGamer charles = new FuzzyPropNetGamer();
 		//charles.setName("charles");
@@ -223,6 +223,9 @@ public class TestingConsole {
 				e.printStackTrace();
 			}
 			printd("Official state: ",currentState.toString(),2);
+			printd("LP state1: ",((LightPropNetMachine) sean.getStateMachine()).getStateFromBase0().toString(),2);
+			printd("LP state2: ",((LightPropNetMachine) sean.getStateMachine()).getStateFromBase().toString(),2);
+
 			gameOver = psm.isTerminal(currentState);
 			if (gameOver) {printd("GAME OVER","",1);}
 			if (pauser) paused(1);
