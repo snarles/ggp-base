@@ -44,19 +44,61 @@ public class LightPropNetMachine extends StateMachine {
     private MachineState currentState = null;
     private int pnSz = 0; //size of propnet
     Map<GdlSentence, Proposition> baseMap;
-    private Set<Integer> trueBase;
     private Set<Integer> legals;
     private Set<Integer> goals;
-    private Set<Integer> transitions;
-    private Set<Integer> currentInputs;
-    private Set<Integer> allInputs;
-    private PriorityQueue<Integer> deltaState = null;
     private Set<Integer> deltaTrans = null;
+    private Set<Integer> currentInputs;
     private Set<Integer> checkFalse = null;
     private Set<Integer> checkTrue = null;
+    private Set<Integer> trueBase;
+    private PriorityQueue<Integer> deltaState = null;
 
 
 
+    public LightPropNetMachine() {
+
+    }
+    public LightPropNetMachine(PropNet propNet0, List<Role> roles0,List<GdlConstant> roleNames0,
+			boolean[] netState0, MachineState currentState0,
+			int pnSz0, Map<GdlSentence, Proposition> baseMap0,
+			Set<Integer> legals0, Set<Integer> goals0, Set<Integer> deltaTrans0, Set<Integer> currentInputs0,
+			Set<Integer> checkFalse0, Set<Integer> checkTrue0, Set<Integer> trueBase0,
+			PriorityQueue<Integer> deltaState0)
+	{
+		propNet = propNet0;
+		roles = new ArrayList<Role>(roles0);
+		roleNames = new ArrayList<GdlConstant>(roleNames0);
+		netState = Arrays.copyOf(netState0,pnSz0);
+		currentState = new MachineState(new HashSet<GdlSentence>(currentState0.getContents()));
+		pnSz = pnSz0;
+		baseMap = baseMap0;
+		legals = new HashSet<Integer>(legals0);
+		goals = new HashSet<Integer>(goals0);
+		deltaTrans = new HashSet<Integer>(deltaTrans0);
+		currentInputs = new HashSet<Integer>(currentInputs0);
+		checkFalse = new HashSet<Integer>(checkFalse0);
+		checkTrue = new HashSet<Integer>(checkTrue0);
+		trueBase = new HashSet<Integer>(trueBase0);
+		deltaState = new PriorityQueue<Integer>(deltaState0);
+    }
+
+    public LightPropNetMachine duplicate() {
+    	return new LightPropNetMachine(propNet,
+			roles,
+			roleNames,
+			netState,
+			currentState,
+			pnSz,
+			baseMap,
+			legals,
+			goals,
+			deltaTrans,
+			currentInputs,
+			checkFalse,
+			checkTrue,
+			trueBase,
+			deltaState);
+    }
     @Override
     public void initialize(List<Gdl> description) {
     	long start = System.currentTimeMillis();
