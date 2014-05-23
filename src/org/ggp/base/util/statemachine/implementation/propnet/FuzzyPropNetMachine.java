@@ -145,6 +145,7 @@ public class FuzzyPropNetMachine extends StateMachine {
         fuzzyState = new double[pnSz];
         legals = new HashSet<Integer>();
         goals = new HashSet<Integer>();
+        currentInputs = new HashSet<Integer>();
         allInputs = propNet.getAllInputs();
 
 
@@ -228,15 +229,6 @@ public class FuzzyPropNetMachine extends StateMachine {
 	@Override
 	public MachineState getInitialState() {
 		// TODO: Compute the initial state.
-		goToInitial();
-		//printNetState();
-		currentState = getStateFromBase();
-		return currentState;
-	}
-
-	//done
-	//called by get Initial..
-	public void goToInitial() {
 		Integer i0 = new Integer(propNet.getInitProposition().getId());
 		netState[i0.intValue()] = true;
 		resolve();
@@ -244,10 +236,11 @@ public class FuzzyPropNetMachine extends StateMachine {
 		goToNext();
 		resolve();
 		if (diagnosticMode) {
-			//printd("initial: ",i0.toString());
-			//printNetState();
 			printCurrentState("FPNM Initialized state to ");
 		}
+		//printNetState();
+		currentState = getStateFromBase();
+		return currentState;
 	}
 
 	//done
@@ -296,6 +289,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 				netState[i.intValue()] = true;
 				//printd("Setting ",i.toString());
 			}
+			currentInputs = newInputs;
 			resolve();
 		}
 	}
@@ -603,6 +597,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 		double l = Math.log(d)/Math.log(p);
 		return (int) Math.floor(l);
 	}
+	/**
 	//gets heuristic joint moves
 	public List<Move> getHeuristicJointMoves(MachineState state) {
 		setState(state);
@@ -657,6 +652,7 @@ public class FuzzyPropNetMachine extends StateMachine {
 			return null;
 		}
 
-	}
+
+	}**/
 
 }

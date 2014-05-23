@@ -33,6 +33,7 @@ import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.propnet.FuzzyPropNetMachine;
+import org.ggp.base.util.statemachine.implementation.propnet.LightPropNetMachine;
 import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 
@@ -41,8 +42,8 @@ public class TestingConsole {
 	int printcount = 0;
 	int diaglevel = 10;
 	//Change this:
-	//String dir = "C:/github/ggp-base/games/gamemaster/";
-	String dir = "/Users/snarles/github/ggp-base/games/gamemaster/";
+	String dir = "C:/github/ggp-base/games/gamemaster/";
+	//String dir = "/Users/snarles/github/ggp-base/games/gamemaster/";
 	//String gamef = "alquerque.kif";
 	//String gamef = "connectfour.kif";
 	//String gamef = "pentago.kif";
@@ -51,7 +52,7 @@ public class TestingConsole {
 
 	String gameFile = dir.concat(gamef);
 	StateMachine psm = new ProverStateMachine();
-	StateMachine lsm = new FuzzyPropNetMachine();
+	StateMachine lsm = new LightPropNetMachine();
 	MachineState currentState;
 	int currentTurn = -1;
 	boolean messageEachTurn = true;
@@ -84,7 +85,7 @@ public class TestingConsole {
 
 		lsm.initialize(theRules);
 
-		pn = ((FuzzyPropNetMachine) lsm).getPropNet();
+		pn = ((LightPropNetMachine) lsm).getPropNet();
 		//printComponents();paused(1);
 		//		PropNetAnnotatedFlattener af = new PropNetAnnotatedFlattener(theRules);
 //		long start = System.currentTimeMillis();
