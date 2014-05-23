@@ -7,7 +7,9 @@ import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -60,6 +62,7 @@ public class FuzzyPropNetMachine extends StateMachine {
     private Set<Integer> goals;
     private Set<Integer> transitions;
     private Set<Integer> currentInputs;
+    private Set<Integer> allInputs;
     private Set<Integer> legalsCache;
     private Set<Integer> goalsCache;
     private Set<Integer> transitionsCache;
@@ -67,8 +70,6 @@ public class FuzzyPropNetMachine extends StateMachine {
     private boolean[] resolvedNetStateCache = null;
     private double[] fuzzyStateCache = null;
 
-
-    private Set<Integer> allInputs;
 
     //done
     //sets the fuzzy values, also if you want to recalculate
@@ -79,8 +80,50 @@ public class FuzzyPropNetMachine extends StateMachine {
     		resolve();
     	}
     }
+    public FuzzyPropNetMachine() {
 
+    }
 
+    public FuzzyPropNetMachine(PropNet propNet0, List<Role> roles0,List<GdlConstant> roleNames0,
+    		boolean[] resolvedNetState0, boolean[] netState0, double[] fuzzyState0, MachineState currentState0,
+    		MachineState currentStateCache0, int pnSz0, double fuzzy00, double fuzzy10, Map<GdlSentence, Proposition> baseMap0,
+    		Set<Integer> legals0, Set<Integer> goals0, Set<Integer> transitions0, Set<Integer> allInputs0, Set<Integer> currentInputs0,
+    		Set<Integer> legalsCache0, Set<Integer> goalsCache0, Set<Integer> transitionsCache0,
+    		boolean[] netStateCache0, boolean[] resolvedNetStateCache0, double[] fuzzyStateCache0)
+    {
+    	propNet = propNet0;
+    	roles = new ArrayList<Role>(roles0);
+    	roleNames = new ArrayList<GdlConstant>(roleNames0);
+    	resolvedNetState = Arrays.copyOf(resolvedNetState0,pnSz0);
+    	netState = Arrays.copyOf(netState0,pnSz0);
+    	fuzzyState = Arrays.copyOf(fuzzyState0,pnSz0);
+    	currentState = new MachineState(new HashSet<GdlSentence>(currentState0.getContents()));
+    	currentStateCache = new MachineState(new HashSet<GdlSentence>(currentStateCache0.getContents()));
+    	pnSz = pnSz0;
+    	fuzzy0 = fuzzy00;
+    	fuzzy1 = fuzzy10;
+    	baseMap = baseMap0;
+    	legals = new HashSet<Integer>(legals0);
+    	goals = new HashSet<Integer>(goals0);
+    	transitions = new HashSet<Integer>(transitions0);
+    	currentInputs = new HashSet<Integer>(currentInputs0);
+    	allInputs = allInputs0;
+    	legalsCache = new HashSet<Integer>(legalsCache0);
+    	goalsCache = new HashSet<Integer>(goalsCache0);
+    	transitionsCache = new HashSet<Integer>(transitionsCache0);
+    	resolvedNetStateCache = Arrays.copyOf(resolvedNetStateCache0,pnSz0);
+    	netStateCache = Arrays.copyOf(netStateCache0,pnSz0);
+    	fuzzyStateCache = Arrays.copyOf(fuzzyStateCache0,pnSz0);
+    }
+
+    public FuzzyPropNetMachine duplicate() {
+    	return new FuzzyPropNetMachine(propNet, roles,roleNames,
+        		resolvedNetState, netState, fuzzyState, currentState,
+        		currentStateCache, pnSz, fuzzy0, fuzzy1, baseMap,
+        		legals, goals, transitions, allInputs, currentInputs,
+        		legalsCache, goalsCache, transitionsCache,
+        		netStateCache, resolvedNetStateCache, fuzzyStateCache);
+    }
     // builds propnet and initializes
     @Override
     public void initialize(List<Gdl> description) {
@@ -102,10 +145,12 @@ public class FuzzyPropNetMachine extends StateMachine {
         fuzzyState = new double[pnSz];
         legals = new HashSet<Integer>();
         goals = new HashSet<Integer>();
-        currentInputs = new HashSet<Integer>();
+        allInputs = propNet.getAllInputs();
+
 
         resolve();
         goToNext();
+        cacheStuff();
         long elapsed = System.currentTimeMillis()-start;
         printd("Time for LPNM to init:",String.valueOf(elapsed));
     }
@@ -553,4 +598,65 @@ public class FuzzyPropNetMachine extends StateMachine {
 	public MachineState getCurrentState() {
 		return new MachineState(new HashSet<GdlSentence>(currentState.getContents()));
 	}
+	public int randGeometric(double p) {
+		double d = rand.nextDouble();
+		double l = Math.log(d)/Math.log(p);
+		return (int) Math.floor(l);
+	}
+	//gets heuristic joint moves
+	public List<Move> getHeuristicJointMoves(MachineState state) {
+		setState(state);
+		cacheStuff();
+		try {
+			// setting up all the moves for everyone
+	        List<List<Move>> legals = new ArrayList<List<Move>>();
+	        for (Role role : roles) {
+	            legals.add(getLegalMoves(state, role));
+	        }
+	        List<List<Move>> crossProduct = new ArrayList<List<Move>>();
+	        Map<Role,Map<Move,List<List<Move>>>> moveMap = new HashMap<Role, Map<Move,List<List<Move>>>>();
+	        crossProductLegalMoves(legals, crossProduct, new LinkedList<Move>());
+	        int count = 0;
+	        for (Role r : roles) {
+	        	moveMap.put(r, new HashMap<Move,List<List<Move>>>());
+	        	List<Move> legalMoves = legals.get(count);
+	        	for (Move m : legalMoves) {
+	        		moveMap.get(r).put(m, new ArrayList<List<Move>>());
+	        	}
+	        	count++;
+	        }
+	        for (List<Move> jointMove : crossProduct) {
+	        	count = 0;
+	        	for (Role r : roles) {
+	        		Move move = jointMove.get(count);
+	        		moveMap.get(r).get(move).add(jointMove);
+	        		count++;
+	        	}
+	        }
+	        Map <Role,Integer> roleToInt = new HashMap<Role, Integer>();
+	        for (Role r : roles) {
+
+	        }
+
+			Map<List<Move>,List<Double>> jointFuzzyGoals= new ArrayList<List<List<Double>>>();
+			Map<List<Move>,MachineState> finalStates = new HashMap<List<Move>,MachineState>();
+			for (List<Move> moves : jointMoves) {
+				loadCache();
+				MachineState finalState = getNextState(state,moves);
+				finalStates.put(moves, finalState);
+				jointFuzzyGoals
+				for (Role r : roles) {
+
+				}
+
+			}
+			return null;
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
+
+	}
+
 }
