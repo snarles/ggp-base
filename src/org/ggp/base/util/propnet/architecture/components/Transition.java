@@ -34,6 +34,7 @@ public final class Transition extends Component
 	{
 		String s = getIdString();
 		s=s.concat("TRANS");
+		//s=s.concat("{").concat(getSp()).concat("}");
 		return s;
 	}
 

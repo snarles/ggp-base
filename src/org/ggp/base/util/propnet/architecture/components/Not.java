@@ -33,6 +33,7 @@ public final class Not extends Component
 	{
 		String s = getIdString();
 		s = s.concat("NOT");
+		//s=s.concat("{").concat(getSp()).concat("}");
 		return s;
 	}
 

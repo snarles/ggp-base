@@ -1,4 +1,4 @@
-package org.ggp.base.player.gamer.statemachine;
+package org.ggp.base.player.gamer.statemachine.sample;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -6,75 +6,135 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.ggp.base.apps.player.detail.DetailPanel;
+import org.ggp.base.apps.player.detail.SimpleDetailPanel;
 import org.ggp.base.player.gamer.Gamer;
+import org.ggp.base.player.gamer.event.GamerSelectedMoveEvent;
 import org.ggp.base.player.gamer.exception.AbortingException;
+import org.ggp.base.player.gamer.exception.GamePreviewException;
 import org.ggp.base.player.gamer.exception.MetaGamingException;
 import org.ggp.base.player.gamer.exception.MoveSelectionException;
 import org.ggp.base.player.gamer.exception.StoppingException;
+import org.ggp.base.util.game.Game;
 import org.ggp.base.util.gdl.grammar.GdlTerm;
 import org.ggp.base.util.logging.GamerLogger;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.StateMachine;
+import org.ggp.base.util.statemachine.cache.CachedStateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
-
+import org.ggp.base.util.statemachine.implementation.propnet.FuzzyPropNetMachine;
+import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 /**
- * The base class for Gamers that rely on representing games as state machines.
- * Almost every player should subclass this class, since it provides the common
- * methods for interpreting the match history as transitions in a state machine,
- * and for keeping an up-to-date view of the current state of the game.
- *
- * See @SimpleSearchLightGamer, @HumanGamer, and @RandomGamer for examples.
- *
- * @author evancox
- * @author Sam
+ * Charles Zheng
  */
-public abstract class StateMachineGamer extends Gamer
+public final class FuzzyPropNetGamer extends Gamer
 {
 	boolean diagnosticMode = true;
-    // =====================================================================
-    // First, the abstract methods which need to be overriden by subclasses.
-    // These determine what state machine is used, what the gamer does during
-    // metagaming, and how the gamer selects moves.
+    // Internal state about the current state of the state machine.
+    private Role role;
+    private MachineState currentState;
+    private FuzzyPropNetMachine stateMachine;
 
-    /**
-     * Defines which state machine this gamer will use.
-     * @return
-     */
-    public abstract StateMachine getInitialStateMachine();
 
-    /**
-     * Defines the metagaming action taken by a player during the START_CLOCK
-     * @param timeout time in milliseconds since the era when this function must return
-     * @throws TransitionDefinitionException
-     * @throws MoveDefinitionException
-     * @throws GoalDefinitionException
-     */
-    public abstract void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException;
+	public Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+	{
+	    FuzzyPropNetMachine theMachine = getStateMachine();
+	    long start = System.currentTimeMillis();
+		long finishBy = timeout - 1000;
+		//stateMachine.printNetState();
+		//paused();
 
-    /**
-     * Defines the algorithm that the player uses to select their move.
-     * @param timeout time in milliseconds since the era when this function must return
-     * @return Move - the move selected by the player
-     * @throws TransitionDefinitionException
-     * @throws MoveDefinitionException
-     * @throws GoalDefinitionException
-     */
-    public abstract Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException;
+		List<Move> moves = theMachine.getLegalMoves(getCurrentState(), getRole());
+		theMachine.cacheStuff();
+		currentState = theMachine.getCurrentState();
+		Move selection = moves.get(0);
 
-    /**
-     * Defines any actions that the player takes upon the game cleanly ending.
-     */
-    public abstract void stateMachineStop();
+		if (moves.size() > 1) {
+    		double[] moveTotalPoints = new double[moves.size()];
+    		int[] moveTotalAttempts = new int[moves.size()];
 
-    /**
-     * Defines any actions that the player takes upon the game abruptly ending.
-     */
-    public abstract void stateMachineAbort();
+    		// Perform depth charges for each candidate move, and keep track
+    		// of the total score and total attempts accumulated for each move.
+    		for (int i = 0; i < moves.size(); i++) {
+    		    //if (System.currentTimeMillis() > finishBy) {break;}
+    			//printd("FPNG state: ",getCurrentState().toString());
+    			theMachine.loadCache();
+		    	//theMachine.printLegals();
+
+    			Move myMove = moves.get(i);
+    			double[] ans = {0.0,0.0};
+    		    try {
+    		    	//printd("FPNG depth charge","");
+    		    	//printd("Input state:",theState.toString());
+    		    	//theMachine.printCurrentState("from FPNG depth charge: ");
+    		    	//printd("Input state:",currentState.toString());
+    	            List<Move> rmoves = theMachine.getRandomJointMove(currentState, getRole(), myMove);
+    	            MachineState finalState = theMachine.getNextState(currentState, rmoves);
+    	            theMachine.printCurrentState("final:");
+    	            //paused();theMachine.printNetState();paused();
+    	            ans[0]= theMachine.getFuzzyGoal(finalState, getRole());
+    	            ans[1]= theMachine.getFuzzyTerminal(finalState);
+    	        } catch (Exception e) {
+    	            e.printStackTrace();
+    	        }
+
+
+
+    		    double[] theScore = ans;
+    		    //paused();theMachine.printNetState();paused();
+    		    printd("Move:".concat(moves.get(i).toString())," : ".concat(String.valueOf(theScore[0])));
+    		    printd(" term:",String.valueOf(theScore[1]));
+    		    moveTotalPoints[i] += theScore[0];
+    		    moveTotalAttempts[i] += 1;
+    		}
+
+    		// Compute the expected score for each move.
+    		double[] moveExpectedPoints = new double[moves.size()];
+    		for (int i = 0; i < moves.size(); i++) {
+    		    moveExpectedPoints[i] = (double)moveTotalPoints[i] / moveTotalAttempts[i];
+    		}
+
+    		// Find the move with the best expected score.
+    		int bestMove = 0;
+    		double bestMoveScore = moveExpectedPoints[0];
+    		for (int i = 1; i < moves.size(); i++) {
+    		    if (moveExpectedPoints[i] > bestMoveScore) {
+    		        bestMoveScore = moveExpectedPoints[i];
+    		        bestMove = i;
+    		    }
+    		}
+    		selection = moves.get(bestMove);
+		}
+
+		long stop = System.currentTimeMillis();
+		printd("FPG select move time:",String.valueOf(stop-start));
+
+		notifyObservers(new GamerSelectedMoveEvent(moves, selection, stop - start));
+		return selection;
+	}
+
+	private int[] depth = new int[1];
+	double performDepthChargeFromMove(MachineState theState, Move myMove) {
+	    FuzzyPropNetMachine theMachine = getStateMachine();
+	    try {
+	    	//printd("FPNG depth charge","");
+	    	theMachine.setState(theState);
+	    	theMachine.synchState();
+	    	//printd("Input state:",theState.toString());
+	    	//theMachine.printCurrentState("from FPNG depth charge: ");
+            MachineState finalState = theMachine.getRandomNextState(theState, getRole(), myMove);
+            return theMachine.getFuzzyGoal(finalState, getRole());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+	}
+	//paste from parent class
 
     // =====================================================================
     // Next, methods which can be used by subclasses to get information about
@@ -100,7 +160,7 @@ public abstract class StateMachineGamer extends Gamer
 	 * Returns the state machine.  This is used for calculating the next state and other operations, such as computing
 	 * the legal moves for all players, whether states are terminal, and the goal values of terminal states.
 	 */
-	public final StateMachine getStateMachine()
+	public final FuzzyPropNetMachine getStateMachine()
 	{
 		return stateMachine;
 	}
@@ -129,7 +189,7 @@ public abstract class StateMachineGamer extends Gamer
      *
      * @param newStateMachine the new state machine
      */
-    protected final void switchStateMachine(StateMachine newStateMachine) {
+    protected final void switchStateMachine(FuzzyPropNetMachine newStateMachine) {
         try {
             MachineState newCurrentState = newStateMachine.getInitialState();
             Role newRole = newStateMachine.getRoleFromConstant(getRoleName());
@@ -165,6 +225,7 @@ public abstract class StateMachineGamer extends Gamer
 	 * initializes the state machine and role using the match description, and
 	 * then calls stateMachineMetaGame.
 	 */
+
 	@Override
 	public final void metaGame(long timeout) throws MetaGamingException
 	{
@@ -191,26 +252,25 @@ public abstract class StateMachineGamer extends Gamer
 	 * and then calls stateMachineSelectMove to select a move based on that
 	 * current state.
 	 */
+
 	@Override
 	public final GdlTerm selectMove(long timeout) throws MoveSelectionException
 	{
 		try
 		{
 			stateMachine.doPerMoveWork();
-
+			//printd("*1*","");
 			List<GdlTerm> lastMoves = getMatch().getMostRecentMoves();
 			if (lastMoves != null)
 			{
+				printd("FPNM **Updating match**","");
 				List<Move> moves = new ArrayList<Move>();
 				for (GdlTerm sentence : lastMoves)
 				{
 					moves.add(stateMachine.getMoveFromTerm(sentence));
 				}
-				printd("State before select:", currentState.toString());
-				//stateMachine.setFullDiagnostic(true);
+				//printd("*3*","");
 				currentState = stateMachine.getNextState(currentState, moves);
-				//stateMachine.setFullDiagnostic(false);
-				printd("State after select:", currentState.toString());
 				getMatch().appendState(currentState.getContents());
 			}
 
@@ -222,6 +282,7 @@ public abstract class StateMachineGamer extends Gamer
 			throw new MoveSelectionException(e);
 		}
 	}
+
 
 	@Override
 	public void stop() throws StoppingException {
@@ -238,7 +299,6 @@ public abstract class StateMachineGamer extends Gamer
 				}
 
 				currentState = stateMachine.getNextState(currentState, moves);
-
 				getMatch().appendState(currentState.getContents());
 				getMatch().markCompleted(stateMachine.getGoals(currentState));
 			}
@@ -251,6 +311,7 @@ public abstract class StateMachineGamer extends Gamer
 			throw new StoppingException(e);
 		}
 	}
+
 
 	@Override
 	public void abort() throws AbortingException {
@@ -266,10 +327,72 @@ public abstract class StateMachineGamer extends Gamer
 	public void setSeed(long seed) {
 		getStateMachine().setSeed(seed);
 	}
-    // Internal state about the current state of the state machine.
-    private Role role;
-    private MachineState currentState;
-    private StateMachine stateMachine;
+
+
+    //paste from SampleGamer
+	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+	{
+		// Sample gamers do no metagaming at the beginning of the match.
+	}
+
+
+
+	/** This will currently return "SampleGamer"
+	 * If you are working on : public abstract class MyGamer extends SampleGamer
+	 * Then this function would return "MyGamer"
+	 */
+
+	@Override
+	public String getName() {
+		return getClass().getSimpleName();
+	}
+
+	// This is the default State Machine
+
+	public FuzzyPropNetMachine getInitialStateMachine() {
+		return new FuzzyPropNetMachine();
+	}
+
+	// This is the defaul Sample Panel
+
+	@Override
+	public DetailPanel getDetailPanel() {
+		return new SimpleDetailPanel();
+	}
+
+
+
+
+	public void stateMachineStop() {
+		// Sample gamers do no special cleanup when the match ends normally.
+	}
+
+
+	public void stateMachineAbort() {
+		// Sample gamers do no special cleanup when the match ends abruptly.
+	}
+
+
+	@Override
+	public void preview(Game g, long timeout) throws GamePreviewException {
+		// Sample gamers do no game previewing.
+	}
+
+	// diagnostic
+
+	public void paused() {
+		if (diagnosticMode) {
+			BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+			System.out.println("[PAUSED]");
+			try {
+				String gameFile = in.readLine();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
 	public void printd(String s, String t) {
 		if (diagnosticMode) {
 			System.out.println(s.concat(t));

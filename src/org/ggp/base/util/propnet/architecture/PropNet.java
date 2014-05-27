@@ -19,6 +19,7 @@ import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.gdl.grammar.GdlTerm;
 import org.ggp.base.util.logging.GamerLogger;
 import org.ggp.base.util.propnet.architecture.components.And;
+import org.ggp.base.util.propnet.architecture.components.Constant;
 import org.ggp.base.util.propnet.architecture.components.Not;
 import org.ggp.base.util.propnet.architecture.components.Or;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
@@ -108,7 +109,7 @@ public final class PropNet
 	private Map<Integer, Set<Integer>> outputMatrix;
 	private Map<Integer, Set<Integer>> inputMatrix;
 	private Map<Integer, Set<Integer>> transitionMatrix;
-
+	private Set<Integer> allInputs = null;
 
 	public void addComponent(Component c)
 	{
@@ -582,8 +583,8 @@ public final class PropNet
 	// New methods
 	public void topoSort()
 	{
+		allInputs = new HashSet<Integer>();
 		boolean flag = true;
-		Set<Component> active = new HashSet(components);
 		while (flag)
 		{
 			//System.out.println("toposort");
@@ -594,47 +595,23 @@ public final class PropNet
 				if (!res) {
 					alldone = false;
 				}
+				if (c instanceof And) {
+					c.setSp("zzAND");
+				}
+				else if (c instanceof Or) {
+					c.setSp("zzOR");
+				}
+				else if (c instanceof Not) {
+					c.setSp("zzNOT");
+				}
+				else if (c instanceof Constant) {
+					c.setSp("zzCONS");
+				}
+				else if (c instanceof Transition) {
+					c.setSp("zTRANS");
+				}
 			}
 			if (alldone) { flag = false; }
-		}
-
-	}
-	public void labelComponents()
-	{
-		transitions = new HashSet<Component>();
-		componentsS = new ArrayList<Component>(components);
-		Collections.sort(componentsS);
-		sorted = new HashMap<Integer, Set<Component>>();
-		HashSet currentSet = new HashSet<Component>();
-		int count = -1;
-		int maxlv = 0;
-		for (Component c : componentsS) {
-
-			count++;
-			c.setId(count);
-			if (c.getLevel() > maxlv) {
-				sorted.put(new Integer(maxlv),currentSet);
-				maxlv++;
-				currentSet = new HashSet<Component>();
-			}
-			currentSet.add(c);
-		}
-		sorted.put(new Integer(maxlv),currentSet);
-		inputMatrix = new HashMap<Integer, Set<Integer>>();
-		outputMatrix = new HashMap<Integer, Set<Integer>>();
-		transitionMatrix = new HashMap<Integer, Set<Integer>>();
-
-		for (Component c : componentsS) {
-			count++;
-			inputMatrix.put(new Integer(c.getId()), c.getInputIds());
-			if (c instanceof Transition) {
-				transitions.add(c);
-				c.setSp("TRANS");
-				transitionMatrix.put(new Integer(c.getId()),c.getTransOutputIds());
-			}
-			else {
-				outputMatrix.put(new Integer(c.getId()), c.getOutputIds());
-			}
 		}
 		for (GdlSentence g : basePropositions.keySet()) {
 			basePropositions.get(g).setSp("BASE");
@@ -657,6 +634,46 @@ public final class PropNet
 		}
 		initProposition.setSp("INITPROP");
 		terminalProposition.setSp("TERMINAL");
+
+	}
+	public void labelComponents()
+	{
+		transitions = new HashSet<Component>();
+		componentsS = new ArrayList<Component>(components);
+		Collections.sort(componentsS);
+		sorted = new HashMap<Integer, Set<Component>>();
+		HashSet currentSet = new HashSet<Component>();
+		int count = -1;
+		int maxlv = 0;
+		for (Component c : componentsS) {
+
+			count++;
+			c.setId(count);
+			if (c.getLevel() > maxlv) {
+				sorted.put(new Integer(maxlv),currentSet);
+				maxlv++;
+				currentSet = new HashSet<Component>();
+			}
+			if (c.getSp()=="INPUT") {
+				allInputs.add(c.getIdInt());
+			}
+			currentSet.add(c);
+		}
+		sorted.put(new Integer(maxlv),currentSet);
+		inputMatrix = new HashMap<Integer, Set<Integer>>();
+		outputMatrix = new HashMap<Integer, Set<Integer>>();
+		transitionMatrix = new HashMap<Integer, Set<Integer>>();
+
+		for (Component c : componentsS) {
+			inputMatrix.put(new Integer(c.getId()), c.getInputIds());
+			if (c instanceof Transition) {
+				transitions.add(c);
+				transitionMatrix.put(new Integer(c.getId()),c.getTransOutputIds());
+			}
+			else {
+				outputMatrix.put(new Integer(c.getId()), c.getOutputIds());
+			}
+		}
 
 		for (int i =0; i < 1; i++) {
 			allCounts = new ArrayList<Integer>();
@@ -709,6 +726,9 @@ public final class PropNet
 		for (Component c : componentsS) {
 			System.out.println("Component:".concat(c.toString3()).concat("++").concat(String.valueOf(c.getOutcount(0))));
 		}
+	}
+	public Set<Integer> getAllInputs() {
+		return allInputs;
 	}
 
 }

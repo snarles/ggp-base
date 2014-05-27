@@ -3,12 +3,16 @@ package org.ggp.base.util.statemachine.implementation.propnet;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.Random;
 import java.util.Set;
 
 import org.ggp.base.util.gdl.grammar.Gdl;
@@ -34,73 +38,68 @@ import org.ggp.base.util.statemachine.implementation.prover.query.ProverQueryBui
 
 
 @SuppressWarnings("unused")
-public class LightPropNetMachine extends StateMachine {
+public class BitwiseFuzzyPropNetMachine extends StateMachine {
+    /** The underlying proposition network  */
 	private boolean diagnosticMode = true;
-
-	private PropNet propNet;
+    private PropNet propNet;
+    /** The topological ordering of the propositions */
+    //private List<Proposition> ordering;
+    /** The player roles */
     private List<Role> roles;
     private List<GdlConstant> roleNames;
+    private boolean[] resolvedNetState = null;
     private boolean[] netState = null;
+    private double[] fuzzyState = null;
+    private int nBits;
+    private List<BigInteger> bitwiseState = null;
+
+    private List<BigInteger> bitwiseStateCache = null;
+    private boolean[] netStateCache = null;
+    private boolean[] resolvedNetStateCache = null;
+
+    private BigInteger bitwiseONE;
+    private BigInteger bitwiseZERO;
     private MachineState currentState = null;
+    private MachineState currentStateCache = null;
     private int pnSz = 0; //size of propnet
+    private int approxOrder; //the higher this is, the less fuzzy the bitwise
     Map<GdlSentence, Proposition> baseMap;
     private Set<Integer> legals;
     private Set<Integer> goals;
-    private Set<Integer> deltaTrans = null;
+    private Set<Integer> transitions;
     private Set<Integer> currentInputs;
-    private Set<Integer> checkFalse = null;
-    private Set<Integer> checkTrue = null;
-    private Set<Integer> trueBase;
-    private PriorityQueue<Integer> deltaState = null;
+    private Set<Integer> allInputs;
 
 
+    private Set<Integer> legalsCache;
+    private Set<Integer> goalsCache;
+    private Set<Integer> transitionsCache;
 
-    public LightPropNetMachine() {
+    private Random bitRnd = new Random(0);
 
-    }
-    public LightPropNetMachine(PropNet propNet0, List<Role> roles0,List<GdlConstant> roleNames0,
-			boolean[] netState0, MachineState currentState0,
-			int pnSz0, Map<GdlSentence, Proposition> baseMap0,
-			Set<Integer> legals0, Set<Integer> goals0, Set<Integer> deltaTrans0, Set<Integer> currentInputs0,
-			Set<Integer> checkFalse0, Set<Integer> checkTrue0, Set<Integer> trueBase0,
-			PriorityQueue<Integer> deltaState0)
-	{
-		propNet = propNet0;
-		roles = new ArrayList<Role>(roles0);
-		roleNames = new ArrayList<GdlConstant>(roleNames0);
-		netState = Arrays.copyOf(netState0,pnSz0);
-		currentState = new MachineState(new HashSet<GdlSentence>(currentState0.getContents()));
-		pnSz = pnSz0;
-		baseMap = baseMap0;
-		legals = new HashSet<Integer>(legals0);
-		goals = new HashSet<Integer>(goals0);
-		deltaTrans = new HashSet<Integer>(deltaTrans0);
-		currentInputs = new HashSet<Integer>(currentInputs0);
-		checkFalse = new HashSet<Integer>(checkFalse0);
-		checkTrue = new HashSet<Integer>(checkTrue0);
-		trueBase = new HashSet<Integer>(trueBase0);
-		deltaState = new PriorityQueue<Integer>(deltaState0);
+    //done
+    //sets the bitwise nBits and probs, also if you want to recalculate
+    public void setFuzzy(int nb, int ao, boolean res) {
+    	nBits = nb;
+    	approxOrder = ao;
+    	byte[] zs = new byte[nb];
+    	bitwiseZERO = new BigInteger(zs);
+    	bitwiseONE = bitwiseZERO;
+    	for (int i = 0; i < nb; i++) {
+    		bitwiseONE = bitwiseONE.flipBit(i);
+    	}
+    	if (res) {
+    		resolve();
+    	}
     }
 
-    public LightPropNetMachine duplicate() {
-    	return new LightPropNetMachine(propNet,
-			roles,
-			roleNames,
-			netState,
-			currentState,
-			pnSz,
-			baseMap,
-			legals,
-			goals,
-			deltaTrans,
-			currentInputs,
-			checkFalse,
-			checkTrue,
-			trueBase,
-			deltaState);
+    public void setBitSeed(long s) {
+    	bitRnd.setSeed(s);
     }
+    // builds propnet and initializes
     @Override
     public void initialize(List<Gdl> description) {
+    	setFuzzy(20,2,false);
     	long start = System.currentTimeMillis();
         try {
 			propNet = OptimizingPropNetFactory.create(description, false);
@@ -112,40 +111,33 @@ public class LightPropNetMachine extends StateMachine {
         propNet.labelComponents();
         pnSz = propNet.getSize();
         roles = propNet.getRoles();
-        roleNames = propNet.getRoleNames();
         baseMap = propNet.getBasePropositions();
+        roleNames = propNet.getRoleNames();
         netState = new boolean[pnSz];
-        currentInputs = new HashSet<Integer>();
-        deltaTrans = new HashSet<Integer>();
-        trueBase = new HashSet<Integer>();
-        deltaState = new PriorityQueue<Integer>();
+        resolvedNetState = netState;
+        fuzzyState = new double[pnSz];
+        bitwiseState = new ArrayList<BigInteger>(Collections.nCopies(pnSz,BigInteger.ZERO));
         legals = new HashSet<Integer>();
         goals = new HashSet<Integer>();
-        checkFalse = new HashSet<Integer>();
-        checkTrue = new HashSet<Integer>();
+        currentInputs = new HashSet<Integer>();
+        allInputs = propNet.getAllInputs();
 
-        for (Component c : propNet.getComponentsS()) {
-        	deltaState.add(c.getIdInt());
-        }
         resolve();
         goToNext();
-        resolve();
         long elapsed = System.currentTimeMillis()-start;
         printd("Time for LPNM to init:",String.valueOf(elapsed));
     }
 
-	/**
-	 * Computes if the state is terminal. Should return the value
-	 * of the terminal proposition for the state.
-	 */
+    //done
 	@Override
 	public boolean isTerminal(MachineState state) {
 		setState(state);
 		int i0 = propNet.getTerminalProposition().getId();
-		//printCurrentState("Terminal? ".concat(String.valueOf(netState[i0])));
+		// TODO: Compute whether the MachineState is terminal.
 		return netState[i0];
 	}
 
+	// done
 	@Override
 	public int getGoal(MachineState state, Role role)
 	throws GoalDefinitionException {
@@ -168,25 +160,50 @@ public class LightPropNetMachine extends StateMachine {
 		return ans;
 	}
 
+	public double getFuzzyGoal(MachineState state, Role role) {
+		setState(state);
+		Set<Proposition> gs = propNet.getGoalPropositions(role);
+		double sum = 0;
+		for (Proposition p : gs) {
+			sum = sum + p.getGoal() * fuzzyState[p.getId()];
+		}
+		return sum;
+	}
+	public double getFuzzyTerminal(MachineState state) {
+		setState(state);
+		Proposition p = propNet.getTerminalProposition();
+		return fuzzyState[p.getId()];
+	}
 
+
+	//done
 	@Override
 	public MachineState getInitialState() {
 		// TODO: Compute the initial state.
+		goToInitial();
+		//printNetState();
+		currentState = getStateFromBase();
+		return currentState;
+	}
+
+	//done
+	//called by get Initial..
+	public void goToInitial() {
 		Integer i0 = new Integer(propNet.getInitProposition().getId());
 		netState[i0.intValue()] = true;
-		deltaState.add(i0);
-		checkFalse.add(i0);
 		resolve();
+		resolvedNetState = Arrays.copyOf(netState,pnSz);
 		goToNext();
 		resolve();
 		if (diagnosticMode) {
-			printCurrentState("LPNM Initialized state to ");
+			//printd("initial: ",i0.toString());
+			//printNetState();
+			printCurrentState("FPNM Initialized state to ");
 		}
-		//printNetState();
-		getStateFromBase();
-		return new MachineState(new HashSet<GdlSentence>(currentState.getContents()));
 	}
 
+	//done
+	//called by all getGoal, getTerminal, etc.
 	public void setState(MachineState state) {
 		Set<GdlSentence> props1 = currentState.getContents();
 		Set<GdlSentence> props2 = state.getContents();
@@ -199,6 +216,44 @@ public class LightPropNetMachine extends StateMachine {
 		}
 	}
 
+	// used when exploring moves, etc, and to implement common random numbers
+	public void cacheStuff() {
+		//printCurrentState("Caching state: ");
+		netStateCache = Arrays.copyOf(netState, pnSz);
+		resolvedNetStateCache = Arrays.copyOf(resolvedNetState, pnSz);
+		bitwiseStateCache = new ArrayList<BigInteger>(bitwiseState);
+		currentStateCache = new MachineState(new HashSet<GdlSentence>(currentState.getContents()));
+		legalsCache = new HashSet<Integer>(legals);
+		goalsCache = new HashSet<Integer>(goals);
+		transitionsCache = new HashSet<Integer>(transitions);
+
+	}
+	public void loadCache() {
+		netState = Arrays.copyOf(netStateCache,pnSz);
+		resolvedNetState = Arrays.copyOf(resolvedNetStateCache, pnSz);
+		bitwiseState = new ArrayList<BigInteger>(bitwiseStateCache);
+		currentState = new MachineState(new HashSet<GdlSentence>(currentStateCache.getContents()));
+		legals = new HashSet<Integer>(legalsCache);
+		goals = new HashSet<Integer>(goalsCache);
+		transitions = new HashSet<Integer>(transitionsCache);
+
+		//printCurrentState("Loading cache: ");
+	}
+	public void setBitwiseMoves(List<Move> moves) {
+		setBitwiseInputs(movesToInts(moves));
+	}
+	public void setBitwiseInputs(Set<Integer> inputs) {
+		for (Integer i : allInputs) {
+			netState[i.intValue()] = false;
+			bitwiseState.set(i.intValue(),bitwiseZERO);
+		}
+		for (Integer i : inputs) {
+			netState[i.intValue()] = true;
+			bitwiseState.set(i.intValue(),bitwiseONE);
+		}
+	}
+
+	// called by getNextState
 	public void setStateMove(MachineState state, List<Move> moves) {
 		Set<GdlSentence> props1 = currentState.getContents();
 		Set<GdlSentence> props2 = state.getContents();
@@ -218,184 +273,165 @@ public class LightPropNetMachine extends StateMachine {
 			//printd("State match: not changing","");
 		}
 		else {
-			//printd("reset state ","");
+			printd("reset state ","");
 			setState0(state);
 			flag = true;
 		}
 		if ((! currentInputs.equals(newInputs)) || flag) {
 			for (Integer i : currentInputs) {
-				if (! newInputs.contains(i)) {
-					netState[i.intValue()] = false;
-					deltaState.add(i);
-				}
+				netState[i.intValue()] = false;
 			}
 			for (Integer i : newInputs) {
-				if (! currentInputs.contains(i)) {
-					netState[i.intValue()] = true;
-					deltaState.add(i);
-				}
+				netState[i.intValue()] = true;
+				//printd("Setting ",i.toString());
 			}
-			currentInputs = newInputs;
 			resolve();
 		}
 	}
+
+	// done
 	// utility function used by SetState and SetStateMove
 	public void setState0(MachineState state) {
-		//printCurrentState("changing state from :");
-		Set<GdlSentence> props2 = state.getContents();
-		Set<GdlSentence> props1 = currentState.getContents();
-		for (GdlSentence g : props2) {
-			if ( ! props1.contains(g)) {
-				Proposition p = baseMap.get(g);
-				trueBase.add(p.getIdInt());
-				deltaState.add(p.getIdInt());
-				netState[p.getId()] = true;
-				checkFalse.add(p.getIdInt());
-			}
-		}
+		Set<GdlSentence> props1 = state.getContents();
+		netState = new boolean[pnSz];
+		fuzzyState = new double[pnSz];
 		for (GdlSentence g : props1) {
-			if ( ! props2.contains(g)) {
-				Proposition p = baseMap.get(g);
-				trueBase.remove(p.getIdInt());
-				deltaState.add(p.getIdInt());
-				netState[p.getId()] = false;
-				checkTrue.add(p.getIdInt());
-			}
+			Proposition p = baseMap.get(g);
+			netState[p.getId()] = true;
 		}
-		getStateFromBase();
-		//printCurrentState("changing state to :");
+		currentState = state;
 	}
 
-	// Given updates loaded in deltaState, propagates changes forward
-	public void resolve()
+
+	public BigInteger bitwiseOne() {
+		BigInteger ans = bitwiseZERO;
+		for (int i = 0; i < approxOrder; i++) {
+			ans = ans.or(new BigInteger(nBits,bitRnd));
+		}
+		return ans;
+	}
+	public BigInteger bitwiseZero() {
+		BigInteger ans = bitwiseONE;
+		for (int i = 0; i < approxOrder; i++) {
+			ans = ans.and(new BigInteger(nBits,bitRnd));
+		}
+		return ans;
+	}
+
+	public void resolve() {
+		resolve(true);
+	}
+	// done
+	public void resolve(boolean resetFuzzy)
 	{
-		if (fullDiagnosticMode) printNetState();
-        while (deltaState.size() > 0) {
-        	Integer ii = deltaState.remove();
-			int i = ii.intValue();
-			boolean oldB = netState[i];
+		fuzzyState = new double[pnSz];
+        legals = new HashSet<Integer>();
+        goals = new HashSet<Integer>();
+        transitions = new HashSet<Integer>();
+		for (int i=0; i < pnSz; i++) {
+			if (resetFuzzy) {
+				if (netState[i]) {
+					bitwiseState.set(i,bitwiseOne());
+				}
+				else {
+					bitwiseState.set(i,bitwiseZero());
+				}
+			}
+			//printd("Iteration:",String.valueOf(i));
 			Component c = propNet.findComponent(i);
+			//printd("  comp:",c.toString3());
+
 			String message = c.toString2();
 			message = message.concat(String.valueOf(netState[i]));
 
 			Set<Integer> inputs = c.getInputIds();
-
 			if (c instanceof And) {
 				netState[i] = true;
 				for (Integer i1 : inputs) {
 					netState[i] = netState[i] && netState[i1.intValue()];
+					bitwiseState.set(i,bitwiseState.get(i).and(bitwiseState.get(i1.intValue())));
 				}
+				//double ans = sum;
+				//fuzzyState[i] = ans;
 			}
 			else if (c instanceof Or) {
 				netState[i] = false;
 				for (Integer i1 : inputs) {
 					netState[i] = netState[i] || netState[i1.intValue()];
+					bitwiseState.set(i,bitwiseState.get(i).or(bitwiseState.get(i1.intValue())));
 				}
 			}
 			else if (c instanceof Not) {
 				for (Integer i1 : inputs) {
 					netState[i] = ! netState[i1.intValue()];
+					bitwiseState.set(i,bitwiseONE.andNot(bitwiseState.get(i1.intValue())));
 				}
 			}
 			else {
 				for (Integer i1 : inputs) {
 					netState[i] = netState[i1.intValue()];
+					bitwiseState.set(i,bitwiseState.get(i1.intValue()));
 				}
 			}
-			String cc = c.getSp();
-			if (netState[i] && !oldB) {
+			if (netState[i]) {
+				String cc = c.getSp();
+				Integer ii = c.getIdInt();
 				if (cc =="LEGAL") {
 					legals.add(ii);
 				}
 				else if (cc=="GOAL") {
 					goals.add(ii);
 				}
-				else if (cc=="BASE") {
-					trueBase.add(ii);
-				}
-
 				else if (cc=="zTRANS") {
-					deltaTrans.add(ii);
+					//printd("trans added",ii.toString());
+					transitions.add(ii);
 				}
 			}
-			if (!netState[i] && oldB) {
-				if (cc =="LEGAL") {
-					legals.remove(ii);
-				}
-				else if (cc=="GOAL") {
-					goals.remove(ii);
-				}
-				else if (cc=="BASE") {
-					trueBase.remove(ii);
-				}
-				else if (cc=="zTRANS") {
-					deltaTrans.add(ii);
-				}
-			}
-
+			fuzzyState[i] = bitwiseState.get(i).bitCount()/(double) nBits;
 			message = message.concat(" to ");
 			message = message.concat(String.valueOf(netState[i]));
-			if (netState[i] != oldB || c.getLevel()==0) {
-				Set<Integer> outputs = c.getOutputIds();
-				for (Integer i2 : outputs) {
-					deltaState.add(i2);
-				}
-				if (fullDiagnosticMode) {
-				  printd(" comp: ",c.toString3());
-				  printd(":",message);
-				}
-			}
+			//printd(":",message);
 		}
-        if (fullDiagnosticMode) { paused(); }
-		//printd("Resolved:",String.valueOf(deltaTrans.size()));
+		//printd("Resolved:",String.valueOf(transitions.size()));
 	}
 
-
-
+	//done
+	// After resolving propnet, gets next state by using transitions
 	public void goToNext() {
-		deltaState = new PriorityQueue<Integer>();
-		boolean[] oldNetState = Arrays.copyOf(netState, pnSz);
-		for (Integer i1 : checkFalse) {
-			netState[i1.intValue()]=false;
-		}
-		for (Integer i1 : checkTrue) {
-			netState[i1.intValue()]=true;
-		}
-
-		for (Integer i1 : deltaTrans) {
+		boolean[] netStateNew = new boolean[pnSz];
+		for (Integer i1 : transitions) {
 			Component c = propNet.findComponent(i1.intValue());
 			for (Integer i2 : c.getTransOutputIds()) {
-				boolean oldV = netState[i2.intValue()];
-				boolean newV = netState[i1.intValue()];
-				if (oldV != newV) {
-					deltaState.add(i2);
-					netState[i2.intValue()] = newV;
-					if (newV) {
-						trueBase.add(i2);
-					}
-					else {
-						trueBase.remove(i2);
-					}
-				}
+				//printd("On:",i2.toString());
+				int ii = i2.intValue();
+				netStateNew[ii] = true;
 			}
 		}
-		for (Integer i1 : checkFalse) {
-			if (! netState[i1.intValue()]) {
-				deltaState.add(i1);
-				trueBase.remove(i1);
-			}
-		}
-		for (Integer i1 : checkTrue) {
-			if (netState[i1.intValue()]) {
-				deltaState.add(i1);
-				trueBase.add(i1);
-			}
-		}
-		checkTrue = new HashSet<Integer>();
-		checkFalse = new HashSet<Integer>();
-		deltaTrans = new HashSet<Integer>();
-		getStateFromBase();
+		netState = netStateNew;
+		currentState = getStateFromBase();
+		//printd("NextState:",String.valueOf(legals.size()));
 	}
+
+	public void goToNextNR() {
+		boolean[] netStateNew = new boolean[pnSz];
+		for (Integer i1 : transitions) {
+			Component c = propNet.findComponent(i1.intValue());
+			for (Integer i2 : c.getTransOutputIds()) {
+				//printd("On:",i2.toString());
+				int ii = i2.intValue();
+				netStateNew[ii] = true;
+			}
+		}
+		for (int ii = 0; ii < pnSz; ii++) {
+			if (netState[ii] != netStateNew[ii]) {
+				bitwiseState.set(ii, bitwiseONE.andNot(bitwiseState.get(ii)));
+			}
+		}
+		netState = netStateNew;
+		currentState = getStateFromBase();
+		//printd("NextState:",String.valueOf(legals.size()));
+	}
+
 
 	//done
 	//utility function used by getLegalMoves
@@ -418,20 +454,13 @@ public class LightPropNetMachine extends StateMachine {
 	@Override
 	public List<Move> getLegalMoves(MachineState state, Role role)
 	throws MoveDefinitionException {
-		String record = currentState.toString().concat(String.valueOf(isTerminal(currentState)));
 		setState(state);
+		//printd("Role:",role.toString());
 		List<Integer> is = getLegalInputs(role.getName());
 		List<Move> ans = new ArrayList<Move>();
 		for (Integer i : is) {
 			Proposition p = (Proposition) propNet.findComponent(i);
 			ans.add(getMoveFromProposition(p));
-		}
-		if (ans.size()==0) {
-			printd(record,"");
-			printCurrentState("Get Legal moves for");
-			printLegals();
-			printd("Is terminal? ", String.valueOf(isTerminal(state)));
-			paused();
 		}
 		return ans;
 	}
@@ -441,9 +470,20 @@ public class LightPropNetMachine extends StateMachine {
 	public MachineState getNextState(MachineState state, List<Move> moves)
 	throws TransitionDefinitionException {
 		setStateMove(state,moves);
+		resolvedNetState = Arrays.copyOf(netState,pnSz);
 		goToNext();
 		resolve();
-		return new MachineState(new HashSet<GdlSentence>(currentState.getContents()));
+		return currentState;
+	}
+
+	// get state no reset fuzzy
+	public MachineState getNextStateNR(List<Move> moves) throws TransitionDefinitionException {
+		setBitwiseMoves(moves);
+		resolve(false);
+		resolvedNetState = Arrays.copyOf(netState,pnSz);
+		goToNextNR();
+		resolve(false);
+		return currentState;
 	}
 
 
@@ -453,35 +493,18 @@ public class LightPropNetMachine extends StateMachine {
 		}
 	}
 
-	public void printCurrentState() {
-		currentState = getStateFromBase();
-		printd("PropNetState:",currentState.toString());
+	public void printCurrentState(String s) {
+		printd("PropNetState:",s.concat(currentState.toString()));
 	}
 
-	public MachineState getCurrentState() {
-		getStateFromBase();
-		return new MachineState(new HashSet<GdlSentence>(currentState.getContents()));
-	}
 
-	/* Already implemented for you */
+	// predone
 	@Override
 	public List<Role> getRoles() {
 		return roles;
 	}
 
-	/* Helper methods */
-
-	/**
-	 * The Input propositions are indexed by (does ?player ?action).
-	 *
-	 * This translates a list of Moves (backed by a sentence that is simply ?action)
-	 * into GdlSentences that can be used to get Propositions from inputPropositions.
-	 * and accordingly set their values etc.  This is a naive implementation when coupled with
-	 * setting input values, feel free to change this for a more efficient implementation.
-	 *
-	 * @param moves
-	 * @return
-	 */
+	// predone
 	private List<GdlSentence> toDoes(List<Move> moves)
 	{
 		List<GdlSentence> doeses = new ArrayList<GdlSentence>(moves.size());
@@ -495,21 +518,27 @@ public class LightPropNetMachine extends StateMachine {
 		return doeses;
 	}
 
-	/**
-	 * Takes in a Legal Proposition and returns the appropriate corresponding Move
-	 * @param p
-	 * @return a PropNetMove
-	 */
+	private Set<Integer> movesToInts(List<Move> moves) {
+		Map<Role, Integer> roleIndices = getRoleIndices();
+		Map<GdlSentence,Proposition> inputMap = propNet.getInputPropositions();
+		Set<Integer> newInputs = new HashSet<Integer>();
+		for (int i = 0; i < roles.size(); i++)
+		{
+			int index = roleIndices.get(roles.get(i));
+			GdlSentence g = ProverQueryBuilder.toDoes(roles.get(i), moves.get(index));
+			Proposition p = inputMap.get(g);
+			newInputs.add(new Integer(p.getId()));
+		}
+		return newInputs;
+	}
+
+	// predone
 	public static Move getMoveFromProposition(Proposition p)
 	{
 		return new Move(p.getName().get(1));
 	}
 
-	/**
-	 * Helper method for parsing the value of a goal proposition
-	 * @param goalProposition
-	 * @return the integer value of the goal proposition
-	 */
+	// predone; not needed
     private int getGoalValue(Proposition goalProposition)
 	{
 		GdlRelation relation = (GdlRelation) goalProposition.getName();
@@ -517,18 +546,8 @@ public class LightPropNetMachine extends StateMachine {
 		return Integer.parseInt(constant.toString());
 	}
 
+	// done; modified from original
 	public MachineState getStateFromBase()
-	{
-		Set<GdlSentence> contents = new HashSet<GdlSentence>();
-		for (Integer ii : trueBase)
-		{
-			Proposition p = (Proposition) propNet.findComponent(ii.intValue());
-			contents.add(p.getName());
-		}
-		currentState =new MachineState(contents);
-		return currentState;
-	}
-	public MachineState getStateFromBase0()
 	{
 		Set<GdlSentence> contents = new HashSet<GdlSentence>();
 		for (Proposition p : propNet.getBasePropositions().values())
@@ -538,8 +557,13 @@ public class LightPropNetMachine extends StateMachine {
 			{
 				contents.add(p.getName());
 			}
+
 		}
 		return new MachineState(contents);
+	}
+
+	public void synchState() {
+		currentState = getStateFromBase();
 	}
 
 	public PropNet getPropNet()
@@ -553,26 +577,35 @@ public class LightPropNetMachine extends StateMachine {
 
 	public void printNetState() {
 		if (diagnosticMode) {
+			DecimalFormat myFormatter = new DecimalFormat("0.000000");
+			int count = 0;
 			for (int i = 0; i < propNet.getSize(); i++) {
 				String s = "";
+				if (resolvedNetState[i]) {
+					s=s.concat("[ X ]");
+				}
+				else {
+					s=s.concat("| . |");
+				}
+
 				if (netState[i]) {
 					s=s.concat("[ X ]");
 				}
 				else {
 					s=s.concat("| . |");
 				}
-				if (deltaState.contains(new Integer(i))) {
-					s=s.concat("[ X ]");
-				}
-				else {
-					s=s.concat("| . |");
-				}
+				s=s.concat("=");
+				s=s.concat(myFormatter.format(fuzzyState[i]));
+				s=s.concat("=");
+				s = s.concat(bitwiseState.get(i).flipBit(nBits+1).toString(2));
+				s=s.concat("|");
 				s=s.concat(propNet.getComponentsS().get(i).toString3());
 				System.out.println(s);
+				count++;
+				if (count % 500==0) {
+					paused();
+				}
 			}
-			printd("CheckTrue: ",checkTrue.toString());
-			printd("CheckFalse: ",checkTrue.toString());
-			printd("deltraTrans: ",deltaTrans.toString());
 		}
 	}
 
@@ -597,7 +630,9 @@ public class LightPropNetMachine extends StateMachine {
 		}
 	}
 
-	public void printCurrentState(String s) {
-		printd("PropNetState:",s.concat(currentState.toString()));
+	public MachineState getCurrentState() {
+		return new MachineState(new HashSet<GdlSentence>(currentState.getContents()));
 	}
+
+
 }

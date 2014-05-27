@@ -1,80 +1,108 @@
-package org.ggp.base.player.gamer.statemachine;
+package org.ggp.base.player.gamer.statemachine.sample;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.ggp.base.apps.player.detail.DetailPanel;
+import org.ggp.base.apps.player.detail.SimpleDetailPanel;
 import org.ggp.base.player.gamer.Gamer;
+import org.ggp.base.player.gamer.event.GamerSelectedMoveEvent;
 import org.ggp.base.player.gamer.exception.AbortingException;
+import org.ggp.base.player.gamer.exception.GamePreviewException;
 import org.ggp.base.player.gamer.exception.MetaGamingException;
 import org.ggp.base.player.gamer.exception.MoveSelectionException;
 import org.ggp.base.player.gamer.exception.StoppingException;
+import org.ggp.base.util.game.Game;
 import org.ggp.base.util.gdl.grammar.GdlTerm;
 import org.ggp.base.util.logging.GamerLogger;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.StateMachine;
+import org.ggp.base.util.statemachine.cache.CachedStateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
-
+import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 /**
- * The base class for Gamers that rely on representing games as state machines.
- * Almost every player should subclass this class, since it provides the common
- * methods for interpreting the match history as transitions in a state machine,
- * and for keeping an up-to-date view of the current state of the game.
+ * SampleMonteCarloGamer is a simple state-machine-based Gamer. It will use a
+ * pure Monte Carlo approach towards picking moves, doing simulations and then
+ * choosing the move that has the highest expected score. It should be slightly
+ * more challenging than the RandomGamer, while still playing reasonably fast.
  *
- * See @SimpleSearchLightGamer, @HumanGamer, and @RandomGamer for examples.
+ * However, right now it isn't challenging at all. It's extremely mediocre, and
+ * doesn't even block obvious one-move wins. This is partially due to the speed
+ * of the default state machine (which is slow) and mostly due to the algorithm
+ * assuming that the opponent plays completely randomly, which is inaccurate.
  *
- * @author evancox
- * @author Sam
+ * @author Sam Schreiber
  */
-public abstract class StateMachineGamer extends Gamer
+public final class SampleMonteCarloGamer2 extends Gamer
 {
-	boolean diagnosticMode = true;
-    // =====================================================================
-    // First, the abstract methods which need to be overriden by subclasses.
-    // These determine what state machine is used, what the gamer does during
-    // metagaming, and how the gamer selects moves.
+	/**
+	 * Employs a simple sample "Monte Carlo" algorithm.
+	 */
 
-    /**
-     * Defines which state machine this gamer will use.
-     * @return
-     */
-    public abstract StateMachine getInitialStateMachine();
+	public Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+	{
+	    StateMachine theMachine = getStateMachine();
+		long start = System.currentTimeMillis();
+		long finishBy = timeout - 1000;
 
-    /**
-     * Defines the metagaming action taken by a player during the START_CLOCK
-     * @param timeout time in milliseconds since the era when this function must return
-     * @throws TransitionDefinitionException
-     * @throws MoveDefinitionException
-     * @throws GoalDefinitionException
-     */
-    public abstract void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException;
+		List<Move> moves = theMachine.getLegalMoves(getCurrentState(), getRole());
+		Move selection = moves.get(0);
+		if (moves.size() > 1) {
+    		int[] moveTotalPoints = new int[moves.size()];
+    		int[] moveTotalAttempts = new int[moves.size()];
 
-    /**
-     * Defines the algorithm that the player uses to select their move.
-     * @param timeout time in milliseconds since the era when this function must return
-     * @return Move - the move selected by the player
-     * @throws TransitionDefinitionException
-     * @throws MoveDefinitionException
-     * @throws GoalDefinitionException
-     */
-    public abstract Move stateMachineSelectMove(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException;
+    		// Perform depth charges for each candidate move, and keep track
+    		// of the total score and total attempts accumulated for each move.
+    		for (int i = 0; true; i = (i+1) % moves.size()) {
+    		    if (System.currentTimeMillis() > finishBy)
+    		        break;
 
-    /**
-     * Defines any actions that the player takes upon the game cleanly ending.
-     */
-    public abstract void stateMachineStop();
+    		    int theScore = performDepthChargeFromMove(getCurrentState(), moves.get(i));
+    		    moveTotalPoints[i] += theScore;
+    		    moveTotalAttempts[i] += 1;
+    		}
 
-    /**
-     * Defines any actions that the player takes upon the game abruptly ending.
-     */
-    public abstract void stateMachineAbort();
+    		// Compute the expected score for each move.
+    		double[] moveExpectedPoints = new double[moves.size()];
+    		for (int i = 0; i < moves.size(); i++) {
+    		    moveExpectedPoints[i] = (double)moveTotalPoints[i] / moveTotalAttempts[i];
+    		}
+
+    		// Find the move with the best expected score.
+    		int bestMove = 0;
+    		double bestMoveScore = moveExpectedPoints[0];
+    		for (int i = 1; i < moves.size(); i++) {
+    		    if (moveExpectedPoints[i] > bestMoveScore) {
+    		        bestMoveScore = moveExpectedPoints[i];
+    		        bestMove = i;
+    		    }
+    		}
+    		selection = moves.get(bestMove);
+		}
+
+		long stop = System.currentTimeMillis();
+
+		notifyObservers(new GamerSelectedMoveEvent(moves, selection, stop - start));
+		return selection;
+	}
+
+	private int[] depth = new int[1];
+	int performDepthChargeFromMove(MachineState theState, Move myMove) {
+	    StateMachine theMachine = getStateMachine();
+	    try {
+            MachineState finalState = theMachine.performDepthCharge(theMachine.getRandomNextState(theState, getRole(), myMove), depth);
+            return theMachine.getGoal(finalState, getRole());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+	}
+	//paste from parent class
 
     // =====================================================================
     // Next, methods which can be used by subclasses to get information about
@@ -165,6 +193,7 @@ public abstract class StateMachineGamer extends Gamer
 	 * initializes the state machine and role using the match description, and
 	 * then calls stateMachineMetaGame.
 	 */
+
 	@Override
 	public final void metaGame(long timeout) throws MetaGamingException
 	{
@@ -191,6 +220,7 @@ public abstract class StateMachineGamer extends Gamer
 	 * and then calls stateMachineSelectMove to select a move based on that
 	 * current state.
 	 */
+
 	@Override
 	public final GdlTerm selectMove(long timeout) throws MoveSelectionException
 	{
@@ -206,11 +236,8 @@ public abstract class StateMachineGamer extends Gamer
 				{
 					moves.add(stateMachine.getMoveFromTerm(sentence));
 				}
-				printd("State before select:", currentState.toString());
-				//stateMachine.setFullDiagnostic(true);
+
 				currentState = stateMachine.getNextState(currentState, moves);
-				//stateMachine.setFullDiagnostic(false);
-				printd("State after select:", currentState.toString());
 				getMatch().appendState(currentState.getContents());
 			}
 
@@ -222,6 +249,7 @@ public abstract class StateMachineGamer extends Gamer
 			throw new MoveSelectionException(e);
 		}
 	}
+
 
 	@Override
 	public void stop() throws StoppingException {
@@ -238,7 +266,6 @@ public abstract class StateMachineGamer extends Gamer
 				}
 
 				currentState = stateMachine.getNextState(currentState, moves);
-
 				getMatch().appendState(currentState.getContents());
 				getMatch().markCompleted(stateMachine.getGoals(currentState));
 			}
@@ -251,6 +278,7 @@ public abstract class StateMachineGamer extends Gamer
 			throw new StoppingException(e);
 		}
 	}
+
 
 	@Override
 	public void abort() throws AbortingException {
@@ -270,9 +298,53 @@ public abstract class StateMachineGamer extends Gamer
     private Role role;
     private MachineState currentState;
     private StateMachine stateMachine;
-	public void printd(String s, String t) {
-		if (diagnosticMode) {
-			System.out.println(s.concat(t));
-		}
+
+    //paste from SampleGamer
+	public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+	{
+		// Sample gamers do no metagaming at the beginning of the match.
+	}
+
+
+
+	/** This will currently return "SampleGamer"
+	 * If you are working on : public abstract class MyGamer extends SampleGamer
+	 * Then this function would return "MyGamer"
+	 */
+
+	@Override
+	public String getName() {
+		return getClass().getSimpleName();
+	}
+
+	// This is the default State Machine
+
+	public StateMachine getInitialStateMachine() {
+		return new CachedStateMachine(new ProverStateMachine());
+	}
+
+	// This is the defaul Sample Panel
+
+	@Override
+	public DetailPanel getDetailPanel() {
+		return new SimpleDetailPanel();
+	}
+
+
+
+
+	public void stateMachineStop() {
+		// Sample gamers do no special cleanup when the match ends normally.
+	}
+
+
+	public void stateMachineAbort() {
+		// Sample gamers do no special cleanup when the match ends abruptly.
+	}
+
+
+	@Override
+	public void preview(Game g, long timeout) throws GamePreviewException {
+		// Sample gamers do no game previewing.
 	}
 }

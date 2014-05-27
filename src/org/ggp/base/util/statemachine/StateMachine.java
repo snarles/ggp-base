@@ -1,5 +1,8 @@
 package org.ggp.base.util.statemachine;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -22,8 +25,14 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
  */
 public abstract class StateMachine
 {
+	boolean diagnosticMode = false;
+	protected boolean fullDiagnosticMode = false;
 	protected long seed = 0;
 	protected Random rand = new Random(seed);
+    public void setFullDiagnostic(boolean b) {
+    	fullDiagnosticMode = b;
+    }
+
     // ============================================
     //          Stubs for implementations
     // ============================================
@@ -304,6 +313,7 @@ public abstract class StateMachine
      */
     public List<Move> getRandomJointMove(MachineState state, Role role, Move move) throws MoveDefinitionException
     {
+
         List<Move> random = new ArrayList<Move>();
         for (Role r : getRoles()) {
             if (r.equals(role)) {
@@ -312,6 +322,22 @@ public abstract class StateMachine
                 random.add(getRandomMove(state, r));
             }
         }
+        if (diagnosticMode) {
+        	String s = "";
+        	s = s.concat("Move: ");
+        	s = s.concat(move.toString());
+        	s= s.concat("| ");
+        	int count = 0;
+        	for (Move m : random) {
+        		s = s.concat(getRoles().get(count).toString());
+        		s = s.concat(" ");
+        		s = s.concat(m.toString());
+        		s = s.concat("; ");
+        		count++;
+        	}
+        	printd(s,"");
+        }
+
 
         return random;
     }
@@ -353,7 +379,7 @@ public abstract class StateMachine
      */
     public MachineState getRandomNextState(MachineState state, Role role, Move move) throws MoveDefinitionException, TransitionDefinitionException
     {
-        List<Move> random = getRandomJointMove(state, role, move);
+    	List<Move> random = getRandomJointMove(state, role, move);
         return getNextState(state, random);
     }
 
@@ -414,5 +440,24 @@ public abstract class StateMachine
 	public void setSeed(long newSeed) {
 		this.seed = newSeed;
 		this.rand = new Random(seed);
+	}
+
+	public void printd(String s, String t) {
+		if (diagnosticMode) {
+			System.out.println(s.concat(t));
+		}
+	}
+
+	public void paused() {
+		if (diagnosticMode) {
+			BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+			System.out.println("[PAUSED]");
+			try {
+				String gameFile = in.readLine();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 	}
 }

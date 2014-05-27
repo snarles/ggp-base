@@ -6,6 +6,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.ggp.base.util.gdl.grammar.GdlConstant;
+import org.ggp.base.util.gdl.grammar.GdlProposition;
+import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.propnet.architecture.components.Transition;
 
 /**
@@ -30,6 +32,8 @@ public abstract class Component implements Serializable, Comparable<Component>
     private final Set<Component> transInputs;
     //outputs given that C is a transition
     protected final Set<Component> transOutputs;
+    /** The name of the Proposition. */
+	protected GdlSentence name;
 
     private int id;
     private final Set<Component> special;
@@ -51,6 +55,7 @@ public abstract class Component implements Serializable, Comparable<Component>
         this.ntransInputs = new HashSet<Component>();
         this.ntransOutputs = new HashSet<Component>();
         this.special = new HashSet<Component>();
+        this.name=new GdlProposition(new GdlConstant("UNDEF"));
     }
 
     /**
@@ -75,7 +80,7 @@ public abstract class Component implements Serializable, Comparable<Component>
 	    	}
     	}
     	for (Component output : outputs) {
-    		if (sp=="TRANS") {
+    		if (sp=="zTRANS") {
     			transOutputs.add(output);
     		}
     		else {
@@ -265,7 +270,14 @@ public abstract class Component implements Serializable, Comparable<Component>
 
     @Override
     public int compareTo(Component c) {
-    	return level-c.getLevel();
+    	int ans= level-c.getLevel();
+    	if (ans==0) {
+    		ans = sp.compareTo(c.getSp());
+    		if (ans==0) {
+    			ans = name.toString().compareTo(c.getName().toString());
+    		}
+    	}
+    	return ans;
     }
 
     public Set<Integer> getOutputIds() {
@@ -337,6 +349,15 @@ public abstract class Component implements Serializable, Comparable<Component>
     public int getGoal() {
     	return goal;
     }
+	/**
+	 * Getter method.
+	 *
+	 * @return The name of the Proposition.
+	 */
+	public GdlSentence getName()
+	{
+		return name;
+	}
 
 
 }
