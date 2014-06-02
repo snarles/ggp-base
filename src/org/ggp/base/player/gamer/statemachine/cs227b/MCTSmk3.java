@@ -43,20 +43,20 @@ public class MCTSmk3 extends GrimgauntPredatorGamer {
 			GoalDefinitionException {
 		Start = System.currentTimeMillis();
 		MaxTime = (timeout - Start);
-		System.out.println("\n========================\nNext Move:");
-		System.out.println("Round Time Limit: " + MaxTime + "ms");
+		//System.out.println("\n========================\nNext Move:");
+		//System.out.println("Round Time Limit: " + MaxTime + "ms");
 		root = new MaxNode(getCurrentState(), null);
 		MaxNode curr;
 		while (!timeout()) {
-			System.out.println("New iteration @ " + playclock() + "ms.");
+			//System.out.println("New iteration @ " + playclock() + "ms.");
 			curr = root;
-			System.out.println("Selecting node.");
+			//System.out.println("Selecting node.");
 			curr = curr.select();
-			System.out.println("Expanding node.");
+			//System.out.println("Expanding node.");
 			curr.expand();
-			System.out.println("Simulating game.");
+			//System.out.println("Simulating game.");
 			double score = curr.simulate();
-			System.out.println("Propagating.");
+			//System.out.println("Propagating.");
 			curr.propagate(score);
 		}
 		return root.getMove();
@@ -127,10 +127,10 @@ public class MCTSmk3 extends GrimgauntPredatorGamer {
 		private int[] depth = new int[1];
 		public double simulate() throws GoalDefinitionException, TransitionDefinitionException, MoveDefinitionException {
 			StateMachine sm = getStateMachine();
-			System.out.println("Starting depth charge.");
+			//System.out.println("Starting depth charge.");
 		    MachineState finalState = sm.performDepthCharge(this.state, depth);
 		    double score = (sm.getGoal(finalState, getRole())/100.0);
-		    System.out.println("Ending depth charge. Explored down " + depth[0] + " Score of " + score);
+		    //System.out.println("Ending depth charge. Explored down " + depth[0] + " Score of " + score);
 		    return score;
 
 		}
